@@ -36,7 +36,7 @@ def plot_cpu_only_node_level_scaling(raw_data, result_filename):
 
 def plot_gpu_only_node_level_scaling(
         raw_data,
-        result_filename,
+        result_filename, gpu_name,
         with_cpu_only_plot=False):
 
     max_executors = raw_data['Executors'].max()
@@ -116,7 +116,7 @@ def plot_gpu_only_node_level_scaling(
         label='Using 8 executors, Up to 16 kernels aggregated per launch')
     ax.set_yscale('log')
     ax.set_xscale('log')
-    plt.title("Hydro-only: GPU infrastructure scaling")
+    plt.title("Hydro-only: " + str(gpu_name) + " GPU API scaling over Cores")
     plt.xlim(non_aggregated_run["Cores"].min() - 0.1,
              non_aggregated_run["Cores"].max() + 10)
     plt.xlabel("Number of Cores")
@@ -191,7 +191,7 @@ def plot_gpu_only_node_level_scaling(
     return
 
 
-def plot_scaling_over_slices(raw_data, result_filename):
+def plot_scaling_over_slices(raw_data, result_filename, gpu_name):
 
     max_cores = raw_data['Cores'].max()
     max_number_executors = raw_data['Executors'].max()
@@ -258,7 +258,7 @@ def plot_scaling_over_slices(raw_data, result_filename):
     ax.set_ylabel(
         "Runtime in s")
     ax.set_title(
-        "Hydro-only on AMD MI100: " +
+        "Hydro-only on " + str(gpu_name) + ": " +
         " Runtime over maximum aggregation slices with " +
         str(max_cores) + " cores")
 
@@ -294,7 +294,7 @@ def plot_scaling_over_slices(raw_data, result_filename):
     return
 
 
-def plot_scaling_over_executors(raw_data, result_filename):
+def plot_scaling_over_executors(raw_data, result_filename, gpu_name):
 
     max_cores = raw_data['Cores'].max()
     max_number_slices = raw_data['Max Aggregation Slices'].max()
@@ -361,7 +361,7 @@ def plot_scaling_over_executors(raw_data, result_filename):
     ax.set_ylabel(
         "Runtime in s")
     ax.set_title(
-        "Hydro-only on AMD MI100: " +
+        "Hydro-only on " + str(gpu_name) + ": " +
         " Runtime over executors with " +
         str(max_cores) + " cores")
 
@@ -448,7 +448,7 @@ def find_best_runs(raw_data):
     return
 
 
-def plot_kernel_aggregation_performance(raw_data, kernelname):
+def plot_kernel_aggregation_performance(raw_data, kernelname, gpu_name):
     # get performance for starved gpu (ie 1 executor)
     max_cores = raw_data['Cores'].max()
     max_executors = raw_data['Executors'].max()
@@ -512,7 +512,7 @@ def plot_kernel_aggregation_performance(raw_data, kernelname):
         label='Avg speedup [Busy GPU]')
     ax.set_xscale('log')
     ax.set_title(
-        "Hydro-only on AMD MI100: " +
+        "Hydro-only on " + str(gpu_name) + ": " +
         kernelname +
         " Kernel Aggregation Sub-Grid Speedup")
     ax.set_xlim(kernel_starved["Max Aggregation Slices"].min(
@@ -597,7 +597,7 @@ def plot_kernel_aggregation_performance(raw_data, kernelname):
     ax.set_xscale('log')
     ax.set_yscale('log')
     ax.set_title(
-        "Hydro-only on AMD MI100: " +
+        "Hydro-only on " + str(gpu_name) + ": " +
         kernelname +
         " Kernel Avg Subgrid Runtime")
     ax.set_xlim(kernel_starved["Max Aggregation Slices"].min(
@@ -695,7 +695,7 @@ def plot_kernel_aggregation_performance(raw_data, kernelname):
     ax.set_xscale('log')
     ax.set_yscale('log')
     ax.set_title(
-        "Hydro-only on AMD MI100: Avg Aggregated " +
+        "Hydro-only on " + str(gpu_name) + ": Avg Aggregated " +
         kernelname +
         " Kernel Runtime")
     ax.set_xlim(kernel_starved["Max Aggregation Slices"].min(
@@ -918,29 +918,32 @@ if __name__ == "__main__":
     warnings.filterwarnings("ignore")
 
     # plot overviews
+    # gpu_name = "AMD MI100"
+    gpu_name = "NVIDIA A100"
     print("Plot cpu-only scaling over cores...")
     plot_cpu_only_node_level_scaling(raw_data, 'cpu-only-nodelevel-scaling.pdf')
     print("Plot gpu-only scaling over cores...")
-    plot_gpu_only_node_level_scaling(raw_data, 'gpu-only-nodelevel-scaling.pdf')
+    plot_gpu_only_node_level_scaling(raw_data, 'gpu-only-nodelevel-scaling.pdf',
+                                     gpu_name)
     print("Plot gpu-only and gpu-only scaling over cores...")
     plot_gpu_only_node_level_scaling(
-        raw_data, 'cpu-gpu-nodelevel-scaling.pdf', True)
+        raw_data, 'cpu-gpu-nodelevel-scaling.pdf', gpu_name, True)
     print("Plot runtime over aggregation slices...")
-    plot_scaling_over_slices(raw_data, 'slices_scaling.pdf')
+    plot_scaling_over_slices(raw_data, 'slices_scaling.pdf', gpu_name)
     print("Plot runtime over GPU executors...")
-    plot_scaling_over_executors(raw_data, 'executors_scaling.pdf')
+    plot_scaling_over_executors(raw_data, 'executors_scaling.pdf', gpu_name)
 
     # plot kernel performance
     print("Plot aggregation speedup for Reconstruct kernel...")
-    plot_kernel_aggregation_performance(raw_data, 'Reconstruct')
+    plot_kernel_aggregation_performance(raw_data, 'Reconstruct', gpu_name)
     print("Plot aggregation speedup for Flux kernel...")
-    plot_kernel_aggregation_performance(raw_data, 'Flux')
+    plot_kernel_aggregation_performance(raw_data, 'Flux', gpu_name)
     print("Plot aggregation speedup for Discs1 kernel...")
-    plot_kernel_aggregation_performance(raw_data, 'Discs1')
+    plot_kernel_aggregation_performance(raw_data, 'Discs1', gpu_name)
     print("Plot aggregation speedup for Discs2 kernel...")
-    plot_kernel_aggregation_performance(raw_data, 'Discs2')
+    plot_kernel_aggregation_performance(raw_data, 'Discs2', gpu_name)
     print("Plot aggregation speedup for Pre_Recon kernel...")
-    plot_kernel_aggregation_performance(raw_data, 'Pre_Recon')
+    plot_kernel_aggregation_performance(raw_data, 'Pre_Recon', gpu_name)
     print("Find best runs...")
     find_best_runs(raw_data)
     exit(0)
