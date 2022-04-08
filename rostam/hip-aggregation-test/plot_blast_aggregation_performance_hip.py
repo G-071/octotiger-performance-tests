@@ -37,7 +37,7 @@ def plot_cpu_only_node_level_scaling(raw_data, result_filename):
     ax = plt.gca()
     ax.plot(
         host_only_run["Cores"],
-        host_only_run["Total Time"],
+        host_only_run["Computation Time"],
         '-o',
         c='blue',
         alpha=0.95,
@@ -48,9 +48,9 @@ def plot_cpu_only_node_level_scaling(raw_data, result_filename):
     plt.xlim(host_only_run["Cores"].min() - 0.1, host_only_run["Cores"].max() + 10)
     plt.xlabel("Number of Cores")
     plt.xticks(host_only_run["Cores"], host_only_run["Cores"])
-    plt.ylim([0, host_only_run["Total Time"].max() + 10])
+    plt.ylim([0, host_only_run["Computation Time"].max() + 10])
     plt.ylabel("Runtime in seconds")
-    plt.yticks(host_only_run["Total Time"], host_only_run["Total Time"])
+    plt.yticks(host_only_run["Computation Time"], host_only_run["Computation Time"])
     plt.grid(True)
     plt.savefig(result_filename, format="pdf", bbox_inches="tight")
     plt.clf()
@@ -89,7 +89,7 @@ def plot_gpu_only_node_level_scaling(raw_data, result_filename, with_cpu_only_pl
     if with_cpu_only_plot is True:
         ax.plot(
             host_only_run["Cores"],
-            host_only_run["Total Time"],
+            host_only_run["Computation Time"],
             '-o',
             c='black',
             alpha=0.65,
@@ -97,7 +97,7 @@ def plot_gpu_only_node_level_scaling(raw_data, result_filename, with_cpu_only_pl
             label='CPU-only')
     ax.plot(
         non_aggregated_run["Cores"],
-        non_aggregated_run["Total Time"],
+        non_aggregated_run["Computation Time"],
         '-o',
         c='red',
         alpha=0.95,
@@ -105,7 +105,7 @@ def plot_gpu_only_node_level_scaling(raw_data, result_filename, with_cpu_only_pl
         label='Using 128 executors, 1 kernels per launch')
     ax.plot(
         slice_aggregated_run["Cores"],
-        slice_aggregated_run["Total Time"],
+        slice_aggregated_run["Computation Time"],
         '-o',
         c='green',
         alpha=0.95,
@@ -113,7 +113,7 @@ def plot_gpu_only_node_level_scaling(raw_data, result_filename, with_cpu_only_pl
         label='Using 1 executors, Up to 128 kernels aggregated per launch')
     ax.plot(
         fully_aggregated_run2["Cores"],
-        fully_aggregated_run2["Total Time"],
+        fully_aggregated_run2["Computation Time"],
         '-o',
         c='lightgreen',
         alpha=0.95,
@@ -121,7 +121,7 @@ def plot_gpu_only_node_level_scaling(raw_data, result_filename, with_cpu_only_pl
         label='Using 8 executors, Up to 128 kernels aggregated per launch')
     ax.plot(
         fully_aggregated_run["Cores"],
-        fully_aggregated_run["Total Time"],
+        fully_aggregated_run["Computation Time"],
         '-o',
         c='teal',
         alpha=0.95,
@@ -136,66 +136,66 @@ def plot_gpu_only_node_level_scaling(raw_data, result_filename, with_cpu_only_pl
     plt.xticks(non_aggregated_run["Cores"], non_aggregated_run["Cores"])
     plt.ylabel("Runtime in seconds")
     if with_cpu_only_plot is True:
-        plt.yticks([host_only_run["Total Time"].max(),
-                    host_only_run["Total Time"].min(),
-                    non_aggregated_run["Total Time"].max(),
-                    non_aggregated_run["Total Time"].min(),
-                    slice_aggregated_run["Total Time"].min(),
-                    fully_aggregated_run2["Total Time"].min(),
-                    fully_aggregated_run["Total Time"].min(),
-                    fully_aggregated_run["Total Time"].max()],
-                   [host_only_run["Total Time"].max(),
-                    host_only_run["Total Time"].min(),
-                    non_aggregated_run["Total Time"].max(),
-                    non_aggregated_run["Total Time"].min(),
-                    slice_aggregated_run["Total Time"].min(),
-                    fully_aggregated_run2["Total Time"].min(),
-                    fully_aggregated_run["Total Time"].min(),
-                    fully_aggregated_run["Total Time"].max()])
+        plt.yticks([host_only_run["Computation Time"].max(),
+                    host_only_run["Computation Time"].min(),
+                    non_aggregated_run["Computation Time"].max(),
+                    non_aggregated_run["Computation Time"].min(),
+                    slice_aggregated_run["Computation Time"].min(),
+                    fully_aggregated_run2["Computation Time"].min(),
+                    fully_aggregated_run["Computation Time"].min(),
+                    fully_aggregated_run["Computation Time"].max()],
+                   [host_only_run["Computation Time"].max(),
+                    host_only_run["Computation Time"].min(),
+                    non_aggregated_run["Computation Time"].max(),
+                    non_aggregated_run["Computation Time"].min(),
+                    slice_aggregated_run["Computation Time"].min(),
+                    fully_aggregated_run2["Computation Time"].min(),
+                    fully_aggregated_run["Computation Time"].min(),
+                    fully_aggregated_run["Computation Time"].max()])
     else:
-        plt.yticks([non_aggregated_run["Total Time"].max(),
-                    non_aggregated_run["Total Time"].min(),
-                    slice_aggregated_run["Total Time"].min(),
-                    fully_aggregated_run2["Total Time"].min(),
-                    fully_aggregated_run["Total Time"].min(),
-                    fully_aggregated_run["Total Time"].max()],
-                   [non_aggregated_run["Total Time"].max(),
-                       non_aggregated_run["Total Time"].min(),
-                       slice_aggregated_run["Total Time"].min(),
-                       fully_aggregated_run2["Total Time"].min(),
-                       fully_aggregated_run["Total Time"].min(),
-                       fully_aggregated_run["Total Time"].max()])
+        plt.yticks([non_aggregated_run["Computation Time"].max(),
+                    non_aggregated_run["Computation Time"].min(),
+                    slice_aggregated_run["Computation Time"].min(),
+                    fully_aggregated_run2["Computation Time"].min(),
+                    fully_aggregated_run["Computation Time"].min(),
+                    fully_aggregated_run["Computation Time"].max()],
+                   [non_aggregated_run["Computation Time"].max(),
+                       non_aggregated_run["Computation Time"].min(),
+                       slice_aggregated_run["Computation Time"].min(),
+                       fully_aggregated_run2["Computation Time"].min(),
+                       fully_aggregated_run["Computation Time"].min(),
+                       fully_aggregated_run["Computation Time"].max()])
     ax.axhline(
-        non_aggregated_run["Total Time"].max(),
+        non_aggregated_run["Computation Time"].max(),
         linestyle='--', alpha=0.25,
         color='k')
     ax.axhline(
-        fully_aggregated_run["Total Time"].max(),
+        fully_aggregated_run["Computation Time"].max(),
         linestyle='--', alpha=0.25,
         color='k')
     ax.axhline(
-        fully_aggregated_run["Total Time"].min(),
+        fully_aggregated_run["Computation Time"].min(),
         linestyle='--', alpha=0.25,
         color='k')
     ax.axhline(
-        fully_aggregated_run2["Total Time"].min(),
+        fully_aggregated_run2["Computation Time"].min(),
         linestyle='--', alpha=0.25,
         color='k')
     ax.axhline(
-        slice_aggregated_run["Total Time"].min(),
+        slice_aggregated_run["Computation Time"].min(),
         linestyle='--', alpha=0.25,
         color='k')
     ax.axhline(
-        non_aggregated_run["Total Time"].min(),
+        non_aggregated_run["Computation Time"].min(),
         linestyle='--', alpha=0.25,
         color='k')
     if with_cpu_only_plot is True:
         ax.axhline(
-            host_only_run["Total Time"].min(),
+            host_only_run["Computation Time"].min(),
             linestyle='--', alpha=0.25,
             color='k')
         ax.axhline(
-            host_only_run["Total Time"].max(),
+            host_only_run["Computation Time"].max(),
             linestyle='--', alpha=0.25,
             color='k')
     plt.legend()
