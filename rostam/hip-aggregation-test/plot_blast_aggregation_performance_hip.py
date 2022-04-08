@@ -1,6 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import warnings
+import argparse
 
 
 def plot_cpu_only_node_level_scaling(raw_data, result_filename):
@@ -879,13 +880,22 @@ def check_aggregation_dataset_invariants(raw_data):
 
 
 if __name__ == "__main__":
-    default_filepath = "sample-datasets/"
-    default_filename_hip = \
-        "blast_aggregation_test_hip_cpuamr" + \
-        "_3_15_2022-04-01_10:09:14_kamand0.rostam.cct.lsu.edu_LOG.txt"
-    default_filename_cuda = \
-        "blast_aggregation_test_cuda_cpuamr" + \
-        "_3_15_2022-03-30_19:44:10_toranj0.rostam.cct.lsu.edu_LOG.txt"
+    parser = argparse.ArgumentParser(
+            description='Process/Plot work aggregation runtime data')
+    parser.add_argument('--filename', dest='filename', action='store',
+                        help='Filename of the runtime data')
+    parser.add_argument('--gpu-name', dest='gpu_name', action='store',
+                        help='Name of the GPU for the plot titles')
+    args = parser.parse_args()
+    print(args.filename)
+
+    # default_filepath = "sample-datasets/"
+    # default_filename_hip = \
+    #     "blast_aggregation_test_hip_cpuamr" + \
+    #     "_3_15_2022-04-01_10:09:14_kamand0.rostam.cct.lsu.edu_LOG.txt"
+    # default_filename_cuda = \
+    #     "blast_aggregation_test_cuda_cpuamr" + \
+    #     "_3_15_2022-03-30_19:44:10_toranj0.rostam.cct.lsu.edu_LOG.txt"
     raw_data_colnames = [
         'Cores',
         'Executors',
@@ -904,9 +914,9 @@ if __name__ == "__main__":
         'Pre_Recon Kernel Avg Time',
         'Profiling Computation Time',
         'Profiling Total Time']
-    print("Reading ...")
+    print("Reading " + str(args.filename) + " ...")
     raw_data = pd.read_csv(
-        default_filepath + default_filename_cuda,
+        args.filename,
         comment='#',
         names=raw_data_colnames,
         header=None)
@@ -918,8 +928,7 @@ if __name__ == "__main__":
     warnings.filterwarnings("ignore")
 
     # plot overviews
-    # gpu_name = "AMD MI100"
-    gpu_name = "NVIDIA A100"
+    gpu_name = args.gpu_name
     print("Plot cpu-only scaling over cores...")
     plot_cpu_only_node_level_scaling(raw_data, 'cpu-only-nodelevel-scaling.pdf')
     print("Plot gpu-only scaling over cores...")
