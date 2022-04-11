@@ -11,8 +11,8 @@ today=`date +%Y-%m-%d_%H:%M:%S`
 start=`date +%s`
 
 # Maschine
-max_level=4
-stop_step=30
+max_level=3
+stop_step=15
 
 # software config
 toolchain_commit="$(git log --oneline | head -n 1)"
