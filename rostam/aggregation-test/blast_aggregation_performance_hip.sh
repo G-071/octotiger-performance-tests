@@ -1,10 +1,6 @@
 #!/bin/bash
 
-
 module list
-#module load llvm/12.0.1
-#module unload boost
-#module load hwloc cuda
 
 # Timestamp
 today=`date +%Y-%m-%d_%H:%M:%S`
@@ -63,10 +59,12 @@ echo "# cores, executors, max slices, computation time (s), total time (s), numb
 echo "DEBUG: Starting ${debug_log_filename}..." > ${debug_log_filename}
 
 
+# Configuration
 CoreList="1 2 4 8 16 32 64"
 ExecutorList="0 1 2 4 8 16 32 64 128"
 AggregationSizes="1 2 4 8 16 32 64 128"
 
+# Collect Results
 for cores in ${CoreList}; do
   for executors in $ExecutorList; do
     if (( ${executors} == 0 )) ; then
@@ -107,3 +105,6 @@ $(echo "$output_rocprof" | grep "Total: " | sed 's/   Total: //g')"
     fi
   done 
 done
+
+# Convinience copy
+cp ${log_filename} performance_results.log
