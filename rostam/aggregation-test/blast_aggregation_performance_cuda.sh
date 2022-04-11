@@ -62,9 +62,12 @@ echo "# cores, executors, max slices, computation time (s), total time (s), numb
 echo "DEBUG: Starting ${debug_log_filename}..." > ${debug_log_filename}
 
 
-CoreList="1 2 4 8 16 32"
-ExecutorList="0 1 2 4 8 16 32 64 128"
-AggregationSizes="1 2 4 8 16 32 64"
+#CoreList="1 2 4 8 16 32"
+#ExecutorList="0 1 2 4 8 16 32 64 128"
+#AggregationSizes="1 2 4 8 16 32 64"
+CoreList="4 8 16 32"
+ExecutorList="0 1 2 4 8 16 32 64"
+AggregationSizes="1 2 4 8 16"
 
 for cores in ${CoreList}; do
   for executors in $ExecutorList; do
@@ -108,3 +111,6 @@ $(echo "$output_nsys" | grep "Total: " | sed 's/   Total: //g')"
     fi
   done 
 done
+
+cp ${log_filename} performance_results.log
+cat performance_results.log
