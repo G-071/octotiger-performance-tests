@@ -90,16 +90,16 @@ for cores in ${CoreList}; do
         compute_time="${cores}, ${executors}, ${slices}, \
 $(echo "$output1" | grep "Computation: " | sed 's/   Computation: //g' | sed 's/ (.*)//g'), \
 $(echo "$output1" | grep "Total: " | sed 's/   Total: //g'), \
-$(echo "$output_nsys" | grep "reconstruct" | awk '{ print $3 }'), \
-$(echo "$output_nsys" | grep "reconstruct" | awk '{ print $4 }'), \
-$(echo "$output_nsys" | grep "flux" | awk '{ print $3 }'), \
-$(echo "$output_nsys" | grep "flux" | awk '{ print $4 }'), \
-$(echo "$output_nsys" | grep "discs_phase1" | awk '{ print $3 }'), \
-$(echo "$output_nsys" | grep "discs_phase1" | awk '{ print $4 }'), \
-$(echo "$output_nsys" | grep "discs_phase2" | awk '{ print $3 }'), \
-$(echo "$output_nsys" | grep "discs_phase2" | awk '{ print $4 }'), \
-$(echo "$output_nsys" | grep "pre_recon" | awk '{ print $3 }'), \
-$(echo "$output_nsys" | grep "pre_recon" | awk '{ print $4 }'), \
+$(echo "$output_nsys" | grep "reconstruct" | awk '{ print $3 }' | sed 's/,//g'), \
+$(echo "$output_nsys" | grep "reconstruct" | awk '{ print $4 }' | sed 's/,//g'), \
+$(echo "$output_nsys" | grep "flux" | awk '{ print $3 }' | sed 's/,//g'), \
+$(echo "$output_nsys" | grep "flux" | awk '{ print $4 }' | sed 's/,//g'), \
+$(echo "$output_nsys" | grep "discs_phase1" | awk '{ print $3 }' | sed 's/,//g'), \
+$(echo "$output_nsys" | grep "discs_phase1" | awk '{ print $4 }' | sed 's/,//g'), \
+$(echo "$output_nsys" | grep "discs_phase2" | awk '{ print $3 }' | sed 's/,//g'), \
+$(echo "$output_nsys" | grep "discs_phase2" | awk '{ print $4 }' | sed 's/,//g'), \
+$(echo "$output_nsys" | grep "pre_recon" | awk '{ print $3 }' | sed 's/,//g'), \
+$(echo "$output_nsys" | grep "pre_recon" | awk '{ print $4 }' | sed 's/,//g'), \
 $(echo "$output_nsys" | grep "Computation: " | sed 's/   Computation: //g' | sed 's/ (.*)//g'), \
 $(echo "$output_nsys" | grep "Total: " | sed 's/   Total: //g')"
         echo "$compute_time" | tee -a ${log_filename}
