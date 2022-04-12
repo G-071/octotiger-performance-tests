@@ -60,12 +60,9 @@ echo "DEBUG: Starting ${debug_log_filename}..." > ${debug_log_filename}
 
 
 # Configuration
-#CoreList="1 2 4 8 16 32 64"
-#ExecutorList="0 1 2 4 8 16 32 64 128"
-#AggregationSizes="1 2 4 8 16 32 64 128"
-CoreList="8 16 32 64"
-ExecutorList="0 1 2 4 8 16"
-AggregationSizes="1 2 4 8 16 32 64"
+CoreList="1 2 4 8 16 32 64"
+ExecutorList="0 1 2 4 8 16 32 64 128"
+AggregationSizes="1 2 4 8 16 32 64 128"
 
 # Collect Results
 for cores in ${CoreList}; do

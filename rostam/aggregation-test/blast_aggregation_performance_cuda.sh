@@ -61,13 +61,9 @@ echo "# Experiment:" | tee -a ${log_filename}
 echo "# cores, executors, max slices, computation time (s), total time (s), number reconstruct launches, avg reconstruct time (ns), number_flux_launches, avg flux time (ns), number_discs_phase1 launches, avg discs phase1 time (ns), number_discs_phase2 launches, avg discs phase2 time (ns), number_pre recon_launches, avg pre_recon time (ns), profiler run computation time(s), profiler run total time (s)" | tee -a ${log_filename}
 echo "DEBUG: Starting ${debug_log_filename}..." > ${debug_log_filename}
 
-
-#CoreList="1 2 4 8 16 32"
-#ExecutorList="0 1 2 4 8 16 32 64 128"
-#AggregationSizes="1 2 4 8 16 32 64"
-CoreList="4 8 16 32"
-ExecutorList="0 1 2 4 8 16 32 64"
-AggregationSizes="1 2 4 8 16"
+CoreList="1 2 4 8 16 32"
+ExecutorList="0 1 2 4 8 16 32 64 128"
+AggregationSizes="1 2 4 8 16 32 64"
 
 for cores in ${CoreList}; do
   for executors in $ExecutorList; do
