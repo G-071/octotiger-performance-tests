@@ -919,7 +919,8 @@ if __name__ == "__main__":
         args.filename,
         comment='#',
         names=raw_data_colnames,
-        header=None)
+        header=None,
+        on_bad_lines = 'warn')
     # Check raw data invariants
     print("Check dataset correctness...")
     check_aggregation_dataset_invariants(raw_data)
