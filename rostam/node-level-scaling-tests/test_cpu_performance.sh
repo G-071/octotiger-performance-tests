@@ -59,7 +59,7 @@ echo "# Number cores: ${NodeList}" | tee -a LOG.txt
 echo "# " | tee -a LOG.txt
 echo "# " | tee -a LOG.txt
 echo "# Experiment:" | tee -a LOG.txt
-echo "# threads, runtime" | tee -a LOG.txt
+echo "# cpu, SIMD library, SIMD extension, cores, function name, total calls, runtime of all calls, average runtime per call" | tee -a LOG.txt
 echo "DEBUG: Starting DEBUG-LOG.txt..." > DEBUG-LOG.txt
 
 export APEX_SCREEN_OUTPUT=1 
