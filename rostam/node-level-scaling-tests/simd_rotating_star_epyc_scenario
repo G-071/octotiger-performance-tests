@@ -1,0 +1,26 @@
+#!/bin/bash
+set -eu
+IFS=$'\n\t'
+
+# Timestamp
+today=`date +%Y-%m-%d_%H:%M`
+
+# Experiment configuration
+experiment_description="Run rotating star node-level scaling with KOKKOS SIMD and STD SIMD on Intel epyc"
+kernel_args=" --hydro_device_kernel_type=OFF --multipole_device_kernel_type=OFF --monopole_device_kernel_type=OFF --hydro_host_kernel_type=KOKKOS --multipole_host_kernel_type=KOKKOS --monopole_host_kernel_type=KOKKOS --amr_boundary_kernel_type=AMR_OPTIMIZED --optimize_local_communication=1"
+octotiger_args="--config_file=src/octotiger/test_problems/rotating_star/rotating_star.ini --unigrid=1 --max_level=3 --stop_step=10 --correct_am_hydro=0 --theta=0.34 --disable_output=1 "
+cpu_platform="$(lscpu | grep "Model name:" | sed 's/Model name: *//')"
+simd_extensions="SCALAR AVX "
+simd_libraries="KOKKOS STD"
+NodeList="1 2 4 8 16 32 64 128"
+output_file="epyc_simd_rotating_star_test_$today"
+debug_output_file="debug_epyc_simd_rotating_star_test_$today"
+
+function extract_compute_time {
+	local compute_time=$(echo $1 | grep 'Computation:' | sed 's/Computation://g' | sed 's/(.*)//g')
+	echo "${compute_time}"
+}	
+function extract_total_time {
+	local total_time=$(echo $1 | grep 'Total:' | sed 's/Total://g' | sed 's/(.*)//g')
+	echo "${total_time}"
+}	
