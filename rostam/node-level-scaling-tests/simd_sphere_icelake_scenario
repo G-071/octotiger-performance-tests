@@ -17,7 +17,7 @@ output_file="icelake_simd_solid_sphere_test_$today"
 debug_output_file="debug_icelake_simd_solid_sphere_test_$today"
  
 function extract_compute_time {
-	local compute_time=$(echo $1 | grep '==> Average iteration execution time:' | sed 's/==> Average iteration execution time://g' | sed 's/ms//g' | awk '{print $1/1000}')
+	local compute_time=$(echo $1 | grep '==> Overall execution time:' | sed 's/==> Overall execution time://g' | sed 's/ms//g' | awk '{print $1/1000}')
 	echo "${compute_time}"
 }	
 function extract_total_time {

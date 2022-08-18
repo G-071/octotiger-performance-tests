@@ -80,9 +80,9 @@ for extension in ${simd_extensions}; do
       output1="$(build/octotiger/build/octotiger -t$i ${octotiger_args} ${kernel_args})"
       echo "DEBUG: ${output1}" >> DEBUG-LOG.txt
       compute_time=$(extract_compute_time "${output1}")
-      compute_time_entry="${cpu_platform},${lib},${extension},Octo-Tiger Compute time,$i,1,${compute_time},${compute_time}"
+      compute_time_entry="${cpu_platform},${lib},${extension},$i,Octo-Tiger Compute time,1,${compute_time},${compute_time}"
       total_time=$(extract_total_time "${output1}")
-      total_time_entry="${cpu_platform},${lib},${extension},Octo-Tiger Total time,$i,1,${total_time},${total_time}"
+      total_time_entry="${cpu_platform},${lib},${extension},$i,Octo-Tiger Total time,1,${total_time},${total_time}"
       echo "$compute_time_entry" | tee -a LOG.txt
       echo "$total_time_entry" | tee -a LOG.txt
       kernel_times=$(cat apex.0.csv | grep "kernel " | awk -F',' -v cores=${i} -v lib=${lib} -v extension=${extension} -v cpu_platform="${cpu_platform}"  -v OFS=',' '{ print cpu_platform,lib,extension,cores,$1,$2,$3/1000000,$3/$2/1000000 }')
