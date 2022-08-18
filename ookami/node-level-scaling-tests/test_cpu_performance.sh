@@ -71,7 +71,7 @@ export KOKKOS_PROFILE_LIBRARY=$(pwd)/build/hpx/lib/libhpx_apex.so
 IFS=' '
 for extension in ${simd_extensions}; do
   for lib in ${simd_libraries}; do
-    if [ "$lib" == "KOKKOS" ] && [ "$lib" == "SVE" ]; then
+    if [ "$lib" == "KOKKOS" ] && [ "$extension" == "SVE" ]; then
       continue
     fi
     sed -i "s/-DOCTOTIGER_KOKKOS_SIMD_LIBRARY=.*/-DOCTOTIGER_KOKKOS_SIMD_LIBRARY=${lib} \\\\/g" build-octotiger.sh
