@@ -6,7 +6,7 @@ IFS=$'\n\t'
 today=`date +%Y-%m-%d_%H:%M`
 
 # Experiment configuration
-experiment_description="Run blast wave node-level scaling with KOKKOS SIMD and STD SIMD on Intel epyc"
+experiment_description="Run blast wave node-level scaling with KOKKOS SIMD and STD SIMD on epyc"
 kernel_args=" --hydro_device_kernel_type=OFF --multipole_device_kernel_type=OFF --monopole_device_kernel_type=OFF --hydro_host_kernel_type=KOKKOS --multipole_host_kernel_type=KOKKOS --monopole_host_kernel_type=KOKKOS --amr_boundary_kernel_type=AMR_OPTIMIZED --optimize_local_communication=1"
 octotiger_args="--config_file=src/octotiger/test_problems/blast/blast.ini --unigrid=1 --max_level=3 --stop_step=10 --correct_am_hydro=0 --theta=0.34 --disable_output=1 "
 cpu_platform="$(lscpu | grep "Model name:" | sed 's/Model name: *//')"

@@ -6,7 +6,7 @@ IFS=$'\n\t'
 today=`date +%Y-%m-%d_%H:%M`
 
 # Experiment configuration
-experiment_description="Run solid sphere node-level scaling with KOKKOS SIMD and STD SIMD on Intel epyc"
+experiment_description="Run solid sphere node-level scaling with KOKKOS SIMD and STD SIMD on epyc"
 kernel_args=" --hydro_device_kernel_type=OFF --multipole_device_kernel_type=OFF --monopole_device_kernel_type=OFF --hydro_host_kernel_type=KOKKOS --multipole_host_kernel_type=KOKKOS --monopole_host_kernel_type=KOKKOS --amr_boundary_kernel_type=AMR_OPTIMIZED --optimize_local_communication=1"
 octotiger_args="--config_file=src/octotiger/test_problems/sphere/sphere.ini --unigrid=1 --max_level=3 --stop_step=10 --correct_am_hydro=0 --theta=0.34 --disable_output=1 "
 cpu_platform="$(lscpu | grep "Model name:" | sed 's/Model name: *//')"
@@ -17,7 +17,7 @@ output_file="epyc_simd_solid_sphere_test_$today"
 debug_output_file="debug_epyc_simd_solid_sphere_test_$today"
  
 function extract_compute_time {
-	local compute_time=$(echo $1 | grep '==> Average iteration execution time:' | sed 's/==> Average iteration execution time://g' | sed 's/ms//g' | awk '{print $1/1000}')
+	local compute_time=$(echo $1 | grep '==> Overall execution time:' | sed 's/==> Overall execution time://g' | sed 's/ms//g' | awk '{print $1/1000}')
 	echo "${compute_time}"
 }	
 function extract_total_time {
