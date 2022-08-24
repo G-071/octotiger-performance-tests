@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -l
 
 
 module load llvm/12.0.1
