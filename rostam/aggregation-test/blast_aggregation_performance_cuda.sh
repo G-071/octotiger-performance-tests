@@ -54,7 +54,7 @@ echo "# Octotiger Commit: ${octotiger_commit}" | tee -a ${log_filename}
 echo "# HPX Commit: ${hpx_commit}" | tee -a ${log_filename}
 echo "# Kokkos Commit: ${kokkos_commit}" | tee -a ${log_filename}
 echo "# HPX-Kokkos Commit: ${hpxkokkos_commit}" | tee -a ${log_filename}
-echo "# CPPudde Commit: ${cppuddle_commit}" | tee -a ${log_filename}
+echo "# CPPuddle Commit: ${cppuddle_commit}" | tee -a ${log_filename}
 echo "# " | tee -a ${log_filename}
 echo "# " | tee -a ${log_filename}
 echo "# Experiment:" | tee -a ${log_filename}
