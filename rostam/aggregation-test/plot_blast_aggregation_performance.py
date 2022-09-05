@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 import warnings
 import argparse
@@ -403,7 +404,7 @@ def find_best_runs(raw_data):
         raw_data['Computation Time'].idxmin()
 
     raw_implicit_only = raw_data.loc[(
-        raw_data['Max Aggregation Slices'] == 1)]
+        raw_data['Max Aggregation Slices'] == 1) & (raw_data['Executors'] >= 1)]
     best_implicit_only_compute_time_index = \
         raw_implicit_only['Computation Time'].idxmin()
 
@@ -782,6 +783,8 @@ def plot_kernel_aggregation_performance(raw_data, kernelname, gpu_name):
 
 def check_aggregation_dataset_invariants(raw_data):
     # raw data invariants:
+    print(raw_data['Computation Time'])
+    print(raw_data)
     if not (raw_data['Cores'] >= 1).all():
         print("Error! Data format is wrong!")
         print("Data entry with less than 1 core found")
@@ -921,6 +924,17 @@ if __name__ == "__main__":
         names=raw_data_colnames,
         header=None,
         on_bad_lines = 'warn')
+    # drop lines with empty values
+
+    pd.set_option('display.max_rows', None)
+    #pd.set_option('display.max_columns', None)
+    pd.set_option('display.width', 1920)
+    raw_data.replace('', np.nan, inplace=True)
+    raw_data.replace(' ', np.nan, inplace=True)
+    print(raw_data['Computation Time'])
+    raw_data.dropna(inplace=True)
+    raw_data = raw_data.apply(pd.to_numeric)
+    print(raw_data['Computation Time'])
     # Check raw data invariants
     print("Check dataset correctness...")
     check_aggregation_dataset_invariants(raw_data)
