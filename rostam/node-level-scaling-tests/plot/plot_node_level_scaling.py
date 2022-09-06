@@ -4,6 +4,7 @@ import matplotlib
 import numpy as np
 import warnings
 import argparse
+import os.path
 
 def plot_hydro_speedup(raw_data_icelake, raw_data_epyc, raw_data_arm):
     raw_data_icelake = raw_data_icelake.round(2)
@@ -41,7 +42,7 @@ def plot_hydro_speedup(raw_data_icelake, raw_data_epyc, raw_data_arm):
     raw_data_arm.replace("kernel p2p kokkos", "Monopole", inplace=True)
 
     matplotlib.rcParams.update({'font.size': 16})
-    labels=["Intel Icelake", "AMD Epyc", "ARM64Fx"]
+    labels=["Intel Icelake", "AMD Epyc", "A64FX"]
     #labels=["Intel Icelake", "AMD Epyc"]
     cores = 1
     bars_legacy_one_core = []
@@ -178,7 +179,7 @@ def plot_hydro_speedup(raw_data_icelake, raw_data_epyc, raw_data_arm):
     ax_all_cores.bar_label(bar2, padding=3, rotation='vertical')
     ax_all_cores.bar_label(bar3, padding=3, rotation='vertical')
     ax_all_cores.set_ylim([0, 33])
-    plt.title("Hydro-Only Scenario using 64 Cores (48 on ARM64FX) ", fontsize = 16)
+    plt.title("Hydro-Only Scenario using 64 Cores (48 on A64FX) ", fontsize = 16)
     plt.legend(loc=4, prop={'size': 15})
     plt.savefig("hydro_all_cores.pdf", format="pdf", bbox_inches="tight")
 
@@ -250,18 +251,18 @@ def plot_cpu_bars(raw_data, title_string, result_filename, simd_key, cores):
     ax = plt.gca()
     #ax = fig.add_axes([0,0,1,1])
     ax.bar(br1, bars_scalar_kokkos, color = 'blue', width = barWidth, edgecolor ='grey', label ='KOKKOS SCALAR [Baseline] ')
-    ax.bar(br2, bars_scalar_std, color = 'cyan', width = barWidth, edgecolor ='grey', label ='Speedup STD SCALAR')
+    ax.bar(br2, bars_scalar_std, color = 'cyan', width = barWidth, edgecolor ='grey', label ='Speedup SES SCALAR')
     if simd_key != "SVE" :
         ax.bar(br3, bars_simd_kokkos, color = 'red', width = barWidth, edgecolor ='grey', label = 'Speedup KOKKOS ' + simd_key + "")
-        ax.bar(br4, bars_simd_std, color = 'orange', width = barWidth, edgecolor ='grey', label = 'Speedup STD ' + simd_key + "")
+        ax.bar(br4, bars_simd_std, color = 'orange', width = barWidth, edgecolor ='grey', label = 'Speedup SES ' + simd_key + "")
     else:
-        ax.bar(br3, bars_simd_std, color = 'orange', width = barWidth, edgecolor ='grey', label = 'Speedup STD ' + simd_key + "")
+        ax.bar(br3, bars_simd_std, color = 'orange', width = barWidth, edgecolor ='grey', label = 'Speedup SES ' + simd_key + "")
     ax.set_xticks([r + 2.5*barWidth/2 for r in range(len(labels))],
         labels, rotation='vertical')
     ax.set_ylabel("Speedup w.r.t KOKKOS SCALAR ")
     ax.set_xlabel("Measured Octo-Tiger component")
     plt.title(title_string, fontsize = 16)
-    plt.legend(loc=0, prop={'size': 15})
+    plt.legend(loc=4, prop={'size': 15})
     plt.savefig(result_filename, format="pdf", bbox_inches="tight")
     #plt.show()
 
@@ -434,7 +435,7 @@ if __name__ == "__main__":
         plot_cpu_only_node_level_scaling(compute_time_scaling_kokkos_scalar, compute_time_scaling_kokkos_avx, title_string, args.output_prefix + "kokkos_node_level_scaling.pdf", "KOKKOS", args.simd_key)
 
     # plot node level scaling with std simd
-    title_string = args.title_prefix + "on " + cpu_name + ":\n Node-Level Scaling with STD SIMD"
+    title_string = args.title_prefix + "on " + cpu_name + ":\n Node-Level Scaling with SES SIMD"
     compute_time_scaling_std = compute_time_scaling.loc[compute_time_scaling['SIMD LIBRARY'] ==
                                         "STD"]
     compute_time_scaling_std_scalar = compute_time_scaling_std.loc[compute_time_scaling_std['SIMD EXTENSION'] ==
@@ -450,25 +451,25 @@ if __name__ == "__main__":
     title_string = args.title_prefix + "on " + cpu_name + ":\n Component SIMD Speedups"
     plot_cpu_bars(raw_data, title_string, args.output_prefix + "component_simd_speedup.pdf", args.simd_key, 1)
 
-
     # plot hydro runtimes
-    raw_data_hydro_icelake = pd.read_csv(
-        "icelake_legacy_test.data",
-        comment='#',
-        names=raw_data_colnames,
-        header=None,
-        on_bad_lines = 'warn')
-    raw_data_hydro_epyc = pd.read_csv(
-        "epyc_legacy_test.data",
-        comment='#',
-        names=raw_data_colnames,
-        header=None,
-        on_bad_lines = 'warn')
-    raw_data_hydro_arm = pd.read_csv(
-        "arm_legacy_test.data",
-        comment='#',
-        names=raw_data_colnames,
-        header=None,
-        on_bad_lines = 'warn')
-    plot_hydro_speedup(raw_data_hydro_icelake, raw_data_hydro_epyc, raw_data_hydro_arm)
+    if os.path.exists("icelake_legacy_test.data") and os.path.exists("epyc_legacy_test.data") and os.path.exists("arm_legacy_test.data"):
+        raw_data_hydro_icelake = pd.read_csv(
+            "icelake_legacy_test.data",
+            comment='#',
+            names=raw_data_colnames,
+            header=None,
+            on_bad_lines = 'warn')
+        raw_data_hydro_epyc = pd.read_csv(
+            "epyc_legacy_test.data",
+            comment='#',
+            names=raw_data_colnames,
+            header=None,
+            on_bad_lines = 'warn')
+        raw_data_hydro_arm = pd.read_csv(
+            "arm_legacy_test.data",
+            comment='#',
+            names=raw_data_colnames,
+            header=None,
+            on_bad_lines = 'warn')
+        plot_hydro_speedup(raw_data_hydro_icelake, raw_data_hydro_epyc, raw_data_hydro_arm)
     exit(0)
