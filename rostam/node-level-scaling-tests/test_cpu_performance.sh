@@ -7,18 +7,6 @@ today=`date +%Y-%m-%d_%H:%M`
 # for measuring
 start=`date +%s`
 
-# Experiment configuration (obsolete, gets sourced from extra file below)
-#experiment_description="Run rotating star node-level scaling with KOKKOS SIMD and STD SIMD on Intel icelake"
-#apex_args=" APEX_SCREEN_OUTPUT=1 APEX_CSV_OUTPUT=1 KOKKOS_PROFILE_LIBRARY=build/hpx/lib/libhpx_apex.so "
-#kernel_args=" --hydro_device_kernel_type=OFF --multipole_device_kernel_type=OFF --monopole_device_kernel_type=OFF --hydro_host_kernel_type=KOKKOS --multipole_host_kernel_type=KOKKOS --monopole_host_kernel_type=KOKKOS --amr_boundary_kernel_type=AMR_OPTIMIZED --optimize_local_communication=1"
-#octotiger_args="--config_file=src/octotiger/test_problems/rotating_star/rotating_star.ini --unigrid=1 --max_level=3 --stop_step=10 --correct_am_hydro=0 --theta=0.34 --disable_output=1 "
-#cpu_platform="$(lscpu | grep "Model name:" | sed 's/Model name: *//')"
-#simd_extensions="SCALAR AVX AVX512"
-#simd_libraries="KOKKOS STD"
-#NodeList="8 16 32 64"
-#output_file="icelake_simd_test_$today"
-#debug_output_file="debug_icelake_simd_test_$today"
-
 echo "Loading config file $1 ..."
 source "$1"
 
@@ -77,7 +65,7 @@ for extension in ${simd_extensions}; do
     ./build-all.sh Release with-CC without-cuda without-mpi without-papi with-apex with-kokkos with-simd with-hpx-backend-multipole with-hpx-backend-monopole with-hpx-cuda-polling without-otf2 octotiger
     for i in $NodeList; do
       echo "DEBUG: Starting run $i ..." >> DEBUG-LOG.txt
-      output1="$(build/octotiger/build/octotiger -t$i ${octotiger_args} ${kernel_args})"
+      output1="$(numactl --interleave=all build/octotiger/build/octotiger -t$i ${octotiger_args} ${kernel_args})"
       echo "DEBUG: ${output1}" >> DEBUG-LOG.txt
       compute_time=$(extract_compute_time "${output1}")
       compute_time_entry="${cpu_platform},${lib},${extension},$i,Octo-Tiger Compute time,1,${compute_time},${compute_time}"
