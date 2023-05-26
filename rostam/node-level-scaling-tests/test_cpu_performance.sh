@@ -64,7 +64,7 @@ echo "DEBUG: Starting DEBUG-LOG.txt..." > DEBUG-LOG.txt
 
 export APEX_SCREEN_OUTPUT=1 
 export APEX_CSV_OUTPUT=1 
-export KOKKOS_PROFILE_LIBRARY=$(pwd)/build/hpx/lib64/libhpx_apex.so
+#export KOKKOS_PROFILE_LIBRARY=$(pwd)/build/hpx/lib64/libhpx_apex.so
 
 
 # Run scaling test
@@ -85,7 +85,7 @@ for extension in ${simd_extensions}; do
       total_time_entry="${cpu_platform},${lib},${extension},$i,Octo-Tiger Total time,1,${total_time},${total_time}"
       echo "$compute_time_entry" | tee -a LOG.txt
       echo "$total_time_entry" | tee -a LOG.txt
-      kernel_times=$(cat apex.0.csv | grep "kernel " | awk -F',' -v cores=${i} -v lib=${lib} -v extension=${extension} -v cpu_platform="${cpu_platform}"  -v OFS=',' '{ print cpu_platform,lib,extension,cores,$1,$2,$3/1000000,$3/$2/1000000 }')
+      kernel_times=$(cat apex.0.csv | grep "^\"kernel " | awk -F',' -v cores=${i} -v lib=${lib} -v extension=${extension} -v cpu_platform="${cpu_platform}"  -v OFS=',' '{ print cpu_platform,lib,extension,cores,$1,$2,$3/1000000,$3/$2/1000000 }')
       echo "$kernel_times" | tee -a LOG.txt
     done
   done
