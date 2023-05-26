@@ -64,7 +64,7 @@ echo "DEBUG: Starting DEBUG-LOG.txt..." > DEBUG-LOG.txt
 
 export APEX_SCREEN_OUTPUT=1 
 export APEX_CSV_OUTPUT=1 
-export KOKKOS_PROFILE_LIBRARY=$(pwd)/build/hpx/lib/libhpx_apex.so
+export KOKKOS_PROFILE_LIBRARY=$(pwd)/build/hpx/lib64/libhpx_apex.so
 
 
 # Run scaling test
@@ -77,7 +77,7 @@ for extension in ${simd_extensions}; do
     ./build-all.sh Release with-CC without-cuda without-mpi without-papi with-apex with-kokkos with-simd with-hpx-backend-multipole with-hpx-backend-monopole with-hpx-cuda-polling without-otf2 octotiger
     for i in $NodeList; do
       echo "DEBUG: Starting run $i ..." >> DEBUG-LOG.txt
-      output1="$(build/octotiger/build/octotiger -t$i ${octotiger_args} ${kernel_args})"
+      output1="$(build/octotiger/build/octotiger --hpx:threads=$i ${octotiger_args} ${kernel_args})"
       echo "DEBUG: ${output1}" >> DEBUG-LOG.txt
       compute_time=$(extract_compute_time "${output1}")
       compute_time_entry="${cpu_platform},${lib},${extension},$i,Octo-Tiger Compute time,1,${compute_time},${compute_time}"

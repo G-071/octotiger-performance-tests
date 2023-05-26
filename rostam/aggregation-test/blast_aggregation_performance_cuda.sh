@@ -69,7 +69,7 @@ for cores in ${CoreList}; do
   for executors in $ExecutorList; do
     if (( ${executors} == 0 )) ; then
       echo "DEBUG: Starting cpu-only run with ${cores} cores ..." >> ${debug_log_filename}
-      kernel_args=" -t ${cores} --cuda_streams_per_gpu=${executors} --cuda_buffer_capacity=1024 --hydro_device_kernel_type=OFF --hydro_host_kernel_type=LEGACY --amr_boundary_kernel_type=AMR_OPTIMIZED --max_executor_slices=1 --cuda_number_gpus=1 "
+      kernel_args=" --hpx:threads=${cores} --cuda_streams_per_gpu=${executors} --cuda_buffer_capacity=1024 --hydro_device_kernel_type=OFF --hydro_host_kernel_type=LEGACY --amr_boundary_kernel_type=AMR_OPTIMIZED --max_executor_slices=1 --cuda_number_gpus=1 "
       output1="$(./build/octotiger/build/octotiger ${hpx_args} ${kernel_args} ${octotiger_args} )"
       echo "DEBUG: ${output1}" >> ${debug_log_filename}
       compute_time="${cores}, 0, 1, $(echo "$output1" | grep "Computation: " | sed 's/   Computation: //g' | sed 's/ (.*)//g'), $(echo "$output1" | grep "Total: " | sed 's/   Total: //g'), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0"
@@ -77,7 +77,7 @@ for cores in ${CoreList}; do
     else
       for slices in $AggregationSizes; do
         echo "DEBUG: Starting normal run with ${cores} cores, ${executors} executors and ${slices} aggregation slices ..." >> ${debug_log_filename}
-      kernel_args=" -t ${cores} --cuda_streams_per_gpu=${executors} --cuda_buffer_capacity=1024 --hydro_device_kernel_type=CUDA --hydro_host_kernel_type=DEVICE_ONLY --amr_boundary_kernel_type=AMR_OPTIMIZED --max_executor_slices=${slices} --cuda_number_gpus=1 "
+      kernel_args=" --hpx:threads=${cores} --cuda_streams_per_gpu=${executors} --cuda_buffer_capacity=1024 --hydro_device_kernel_type=CUDA --hydro_host_kernel_type=DEVICE_ONLY --amr_boundary_kernel_type=AMR_OPTIMIZED --max_executor_slices=${slices} --cuda_number_gpus=1 "
         output1="$(./build/octotiger/build/octotiger ${hpx_args} ${kernel_args} ${octotiger_args} )"
         echo "DEBUG: ${output1}" >> ${debug_log_filename}
         # cleanup
