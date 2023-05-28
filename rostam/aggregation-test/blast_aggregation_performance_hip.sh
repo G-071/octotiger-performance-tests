@@ -37,7 +37,7 @@ kernel_args="--cuda_streams_per_gpu=128 --cuda_buffer_capacity=1024 --hydro_devi
 # Scenario
 octotiger_args="--config_file=src/octotiger/test_problems/blast/blast.ini --unigrid=1 --disable_output=on --max_level=3 --stop_step=15"
 # HPX configuration without the threads argument
-hpx_args="--hpx.queuing=local-priority-lifo "
+hpx_args="--hpx:queuing=local-priority-lifo "
 
 echo "# Date of run $today" | tee ${log_filename}
 echo "# Running aggregation test on $(hostname)" | tee -a ${log_filename}
