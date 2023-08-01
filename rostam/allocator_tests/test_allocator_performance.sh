@@ -117,47 +117,29 @@ for gpu_kernel_type in ${gpu_backends}; do
       fi
     fi
     # iterate gpus
-    for number_gpus in ${max_gpu_list}; do
-      # early exit for cpu-only run
-      if [[ "${host_kernel_type}" != "DEVICE_ONLY" ]]; then
-        if [[ ${number_gpus} -gt 1 ]]; then
-          break
-        fi
-      fi
-      # early exit for non-hpxWARE
-      if [[ "${hpx_aware_allocators_mode}" != "OFF" ]]; then
-        if [[ ${number_gpus} -gt 1 ]]; then
-          break
-        fi
-      fi
-      sed -i "s/-DCPPUDDLE_WITH_MAX_NUMBER_WORKERS=.*/-DCPPUDDLE_WITH_MAX_NUMBER_WORKERS=${max_worker} \\\\/g" build-cppuddle.sh
-      sed -i "s/-DCPPUDDLE_WITH_NUMBER_GPUS=.*/-DCPPUDDLE_WITH_NUMBER_GPUS=${number_gpus} \\\\/g" build-cppuddle.sh
+      sed -i "s/-DCPPUDDLE_WITH_MAX_NUMBER_WORKERS=.*/-DCPPUDDLE_WITH_MAX_NUMBER_WORKERS=${max_core_count} \\\\/g" build-cppuddle.sh
+      sed -i "s/-DCPPUDDLE_WITH_NUMBER_GPUS=.*/-DCPPUDDLE_WITH_NUMBER_GPUS=1 \\\\/g" build-cppuddle.sh
       sed -i "s/-DCPPUDDLE_DEACTIVATE_BUFFER_RECYCLING=.*/-DCPPUDDLE_DEACTIVATE_BUFFER_RECYCLING=${recycling_mode} \\\\/g" build-cppuddle.sh
       sed -i "s/-DCPPUDDLE_WITH_HPX_AWARE_ALLOCATORS=.*/-DCPPUDDLE_WITH_HPX_AWARE_ALLOCATORS=${hpx_aware_allocators_mode} \\\\/g" build-cppuddle.sh
       sed -i "s/-DCPPUDDLE_WITH_HPX=.*/-DCPPUDDLE_WITH_HPX=${hpx_aware_allocators_mode} \\\\/g" build-cppuddle.sh
       sed -i "s/-DCPPUDDLE_WITH_HPX_MUTEX=.*/-DCPPUDDLE_WITH_HPX_MUTEX=${hpx_aware_allocators_mode} \\\\/g" build-cppuddle.sh
       if [[ "${hpx_aware_allocators_mode}" == "OFF" ]]; then
-        if [[ ${number_gpus} -gt 1 ]]; then
-          break
-        fi
         sed -i "s/-DCPPUDDLE_WITH_MAX_NUMBER_WORKERS=.*/-DCPPUDDLE_WITH_MAX_NUMBER_WORKERS=1 \\\\/g" build-cppuddle.sh
       fi
         ./build-all.sh Release with-CC-clang with-cuda without-mpi without-papi with-apex with-kokkos with-simd with-hpx-backend-multipole with-hpx-backend-monopole with-hpx-cuda-polling without-otf2 cppuddle octotiger
       # Number of cores used (up until max worker is hit)
       for number_cores in ${core_iterate_list}; do
-        cores_per_gpu=$((max_worker/number_gpus))
         echo "${gpu_kernel_type},${max_worker},${number_gpus},${cores_per_gpu},${number_cores}"
         output1="$(build/octotiger/build/octotiger --hpx:threads=${number_cores} ${octotiger_args} ${kernel_args})"
         echo "DEBUG: ${output1}" >> DEBUG-LOG.txt
         compute_time=$(extract_compute_time "${output1}")
         total_time=$(extract_total_time "${output1}")
-        compute_time_entry="${host_kernel_type},${gpu_kernel_type},${recycling_mode},${hpx_aware_allocators_mode},${max_worker},${number_gpus},${cores_per_gpu},${number_cores},${compute_time}, ${total_time}"
+        compute_time_entry="${host_kernel_type},${gpu_kernel_type},${recycling_mode},${hpx_aware_allocators_mode},${max_worker},${number_cores},${compute_time}, ${total_time}"
         echo "$compute_time_entry" | tee -a LOG.txt
         if [[ ${number_cores} -eq ${max_worker} ]]; then
           break
         fi
       done
-    done
   done
 done
 done

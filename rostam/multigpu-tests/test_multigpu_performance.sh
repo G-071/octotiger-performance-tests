@@ -33,8 +33,8 @@ octotiger_args=" --config_file=src/octotiger/test_problems/blast/blast.ini --uni
 #max_gpu_list="1 2 4"
 #core_iterate_list="1 2 3 4 8 16 32 64"
 
-disable_recycling_modes="OFF ON "
-hpx_aware_allocators_modes="ON OFF "
+future_types="with-hpx-cuda-polling without-hpx-cuda-polling "
+hpx_mutex_modes="OFF ON "
 gpu_backends="OFF_LEGACY OFF_KOKKOS CUDA KOKKOS_CUDA "
 max_core_count=40
 max_worker_list="10 20 40"
@@ -92,8 +92,6 @@ export APEX_CSV_OUTPUT=1
 
 # Run scaling test
 IFS=' '
-for recycling_mode in ${disable_recycling_modes}; do
-for hpx_aware_allocators_mode in ${hpx_aware_allocators_modes}; do
 for gpu_kernel_type in ${gpu_backends}; do
   host_kernel_type="DEVICE_ONLY"
   max_slices=4
@@ -101,66 +99,59 @@ for gpu_kernel_type in ${gpu_backends}; do
     host_kernel_type="LEGACY"
     gpu_kernel_type="OFF"
     max_slices=1
+    future_types="without-hpx-cuda-polling"
   fi
   if [ "${gpu_kernel_type}" = "OFF_KOKKOS" ]; then
     host_kernel_type="KOKKOS"
     gpu_kernel_type="OFF"
     max_slices=1
+    future_types="without-hpx-cuda-polling"
   fi
   kernel_args=" --hydro_device_kernel_type=${gpu_kernel_type} --multipole_device_kernel_type=${gpu_kernel_type} --monopole_device_kernel_type=${gpu_kernel_type} --hydro_host_kernel_type=${host_kernel_type} --multipole_host_kernel_type=${host_kernel_type} --monopole_host_kernel_type=${host_kernel_type} --amr_boundary_kernel_type=AMR_OPTIMIZED --optimize_local_communication=1 --cuda_streams_per_gpu=32 --max_executor_slices=${max_slices}"
-  # iterate maximum workers
-  for max_worker in ${max_worker_list}; do
-    # early exit for cpu-only run
-    if [[ "${host_kernel_type}" != "DEVICE_ONLY" ]]; then
-      if [[ ${max_worker} -lt ${max_core_count} ]]; then
-        continue
-      fi
-    fi
-    # iterate gpus
-    for number_gpus in ${max_gpu_list}; do
-      # early exit for cpu-only run
-      if [[ "${host_kernel_type}" != "DEVICE_ONLY" ]]; then
-        if [[ ${number_gpus} -gt 1 ]]; then
-          break
+  for future_type in ${future_types}; do
+    ./build-all.sh Release with-CC-clang with-cuda without-mpi without-papi with-apex with-kokkos with-simd with-hpx-backend-multipole with-hpx-backend-monopole ${future_type} without-otf2 hpx kokkos cppuddle octotiger
+    for hpx_mutex_mode in ${hpx_mutex_modes}; do
+      # iterate maximum workers
+      for max_worker in ${max_worker_list}; do
+        # early exit for cpu-only run
+        if [[ "${host_kernel_type}" != "DEVICE_ONLY" ]]; then
+          if [[ ${max_worker} -lt ${max_core_count} ]]; then
+            continue
+          fi
         fi
-      fi
-      # early exit for non-hpxWARE
-      if [[ "${hpx_aware_allocators_mode}" != "OFF" ]]; then
-        if [[ ${number_gpus} -gt 1 ]]; then
-          break
-        fi
-      fi
-      sed -i "s/-DCPPUDDLE_WITH_MAX_NUMBER_WORKERS=.*/-DCPPUDDLE_WITH_MAX_NUMBER_WORKERS=${max_worker} \\\\/g" build-cppuddle.sh
-      sed -i "s/-DCPPUDDLE_WITH_NUMBER_GPUS=.*/-DCPPUDDLE_WITH_NUMBER_GPUS=${number_gpus} \\\\/g" build-cppuddle.sh
-      sed -i "s/-DCPPUDDLE_DEACTIVATE_BUFFER_RECYCLING=.*/-DCPPUDDLE_DEACTIVATE_BUFFER_RECYCLING=${recycling_mode} \\\\/g" build-cppuddle.sh
-      sed -i "s/-DCPPUDDLE_WITH_HPX_AWARE_ALLOCATORS=.*/-DCPPUDDLE_WITH_HPX_AWARE_ALLOCATORS=${hpx_aware_allocators_mode} \\\\/g" build-cppuddle.sh
-      sed -i "s/-DCPPUDDLE_WITH_HPX=.*/-DCPPUDDLE_WITH_HPX=${hpx_aware_allocators_mode} \\\\/g" build-cppuddle.sh
-      sed -i "s/-DCPPUDDLE_WITH_HPX_MUTEX=.*/-DCPPUDDLE_WITH_HPX_MUTEX=${hpx_aware_allocators_mode} \\\\/g" build-cppuddle.sh
-      if [[ "${hpx_aware_allocators_mode}" == "OFF" ]]; then
-        if [[ ${number_gpus} -gt 1 ]]; then
-          break
-        fi
-        sed -i "s/-DCPPUDDLE_WITH_MAX_NUMBER_WORKERS=.*/-DCPPUDDLE_WITH_MAX_NUMBER_WORKERS=1 \\\\/g" build-cppuddle.sh
-      fi
-        ./build-all.sh Release with-CC-clang with-cuda without-mpi without-papi with-apex with-kokkos with-simd with-hpx-backend-multipole with-hpx-backend-monopole with-hpx-cuda-polling without-otf2 cppuddle octotiger
-      # Number of cores used (up until max worker is hit)
-      for number_cores in ${core_iterate_list}; do
-        cores_per_gpu=$((max_worker/number_gpus))
-        echo "${gpu_kernel_type},${max_worker},${number_gpus},${cores_per_gpu},${number_cores}"
-        output1="$(build/octotiger/build/octotiger --hpx:threads=${number_cores} ${octotiger_args} ${kernel_args})"
-        echo "DEBUG: ${output1}" >> DEBUG-LOG.txt
-        compute_time=$(extract_compute_time "${output1}")
-        total_time=$(extract_total_time "${output1}")
-        compute_time_entry="${host_kernel_type},${gpu_kernel_type},${recycling_mode},${hpx_aware_allocators_mode},${max_worker},${number_gpus},${cores_per_gpu},${number_cores},${compute_time}, ${total_time}"
-        echo "$compute_time_entry" | tee -a LOG.txt
-        if [[ ${number_cores} -eq ${max_worker} ]]; then
-          break
-        fi
+        # iterate gpus
+        for number_gpus in ${max_gpu_list}; do
+          # early exit for cpu-only run
+          if [[ "${host_kernel_type}" != "DEVICE_ONLY" ]]; then
+            if [[ ${number_gpus} -gt 1 ]]; then
+              break
+            fi
+          fi
+          sed -i "s/-DCPPUDDLE_WITH_MAX_NUMBER_WORKERS=.*/-DCPPUDDLE_WITH_MAX_NUMBER_WORKERS=${max_worker} \\\\/g" build-cppuddle.sh
+          sed -i "s/-DCPPUDDLE_WITH_NUMBER_GPUS=.*/-DCPPUDDLE_WITH_NUMBER_GPUS=${number_gpus} \\\\/g" build-cppuddle.sh
+          sed -i "s/-DCPPUDDLE_DEACTIVATE_BUFFER_RECYCLING=.*/-DCPPUDDLE_DEACTIVATE_BUFFER_RECYCLING=OFF \\\\/g" build-cppuddle.sh
+          sed -i "s/-DCPPUDDLE_WITH_HPX_AWARE_ALLOCATORS=.*/-DCPPUDDLE_WITH_HPX_AWARE_ALLOCATORS=ON \\\\/g" build-cppuddle.sh
+          sed -i "s/-DCPPUDDLE_WITH_HPX=.*/-DCPPUDDLE_WITH_HPX=ON \\\\/g" build-cppuddle.sh
+          sed -i "s/-DCPPUDDLE_WITH_HPX_MUTEX=.*/-DCPPUDDLE_WITH_HPX_MUTEX=${hpx_mutex_mode} \\\\/g" build-cppuddle.sh
+            ./build-all.sh Release with-CC-clang with-cuda without-mpi without-papi with-apex with-kokkos with-simd with-hpx-backend-multipole with-hpx-backend-monopole with-hpx-cuda-polling without-otf2 cppuddle octotiger
+          # Number of cores used (up until max worker is hit)
+          for number_cores in ${core_iterate_list}; do
+            cores_per_gpu=$((max_worker/number_gpus))
+            echo "${gpu_kernel_type},${max_worker},${number_gpus},${cores_per_gpu},${number_cores}"
+            output1="$(build/octotiger/build/octotiger --hpx:threads=${number_cores} ${octotiger_args} ${kernel_args})"
+            echo "DEBUG: ${output1}" >> DEBUG-LOG.txt
+            compute_time=$(extract_compute_time "${output1}")
+            total_time=$(extract_total_time "${output1}")
+            compute_time_entry="${host_kernel_type},${gpu_kernel_type},${future_type},${hpx_mutex_mode},${max_worker},${number_gpus},${cores_per_gpu},${number_cores},${compute_time}, ${total_time}"
+            echo "$compute_time_entry" | tee -a LOG.txt
+            if [[ ${number_cores} -eq ${max_worker} ]]; then
+              break
+            fi
+          done
+        done
       done
     done
   done
-done
-done
 done 
 
 # Total experiment runtime:
