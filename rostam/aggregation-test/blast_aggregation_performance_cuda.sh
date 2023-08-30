@@ -36,7 +36,7 @@ log_filename=blast_aggregation_test_cuda_cpuamr_${max_level}_${stop_step}_${toda
 debug_log_filename=blast_aggregation_test_cuda_cpuamr_${max_level}_${stop_step}_${today}_$(hostname)_DEBUG_LOG.txt
 
 # Default Kernel configuration
-kernel_args="--cuda_streams_per_gpu=128 --cuda_buffer_capacity=1024 --hydro_device_kernel_type=CUDA --hydro_host_kernel_type=DEVICE_ONLY --amr_boundary_kernel_type=AMR_OPTIMIZED --max_executor_slices=1 --cuda_number_gpus=1 "
+kernel_args="--executor_per_gpu=128 --max_gpu_executor_queue_length=1024 --hydro_device_kernel_type=CUDA --hydro_host_kernel_type=DEVICE_ONLY --amr_boundary_kernel_type=AMR_OPTIMIZED --max_kernels_fused=1 --number_gpus=1 "
 # Scenario
 octotiger_args="--config_file=src/octotiger/test_problems/blast/blast.ini --unigrid=1 --disable_output=on --max_level=${max_level} --stop_step=${stop_step}"
 # HPX configuration without the threads argument
@@ -69,7 +69,7 @@ for cores in ${CoreList}; do
   for executors in $ExecutorList; do
     if (( ${executors} == 0 )) ; then
       echo "DEBUG: Starting cpu-only run with ${cores} cores ..." >> ${debug_log_filename}
-      kernel_args=" --hpx:threads=${cores} --cuda_streams_per_gpu=${executors} --cuda_buffer_capacity=1024 --hydro_device_kernel_type=OFF --hydro_host_kernel_type=LEGACY --amr_boundary_kernel_type=AMR_OPTIMIZED --max_executor_slices=1 --cuda_number_gpus=1 "
+      kernel_args=" --hpx:threads=${cores} --executor_per_gpu=${executors} --max_gpu_executor_queue_length=1024 --hydro_device_kernel_type=OFF --hydro_host_kernel_type=LEGACY --amr_boundary_kernel_type=AMR_OPTIMIZED --max_kernels_fused=1 --number_gpus=1 "
       output1="$(./build/octotiger/build/octotiger ${hpx_args} ${kernel_args} ${octotiger_args} )"
       echo "DEBUG: ${output1}" >> ${debug_log_filename}
       compute_time="${cores}, 0, 1, $(echo "$output1" | grep "Computation: " | sed 's/   Computation: //g' | sed 's/ (.*)//g'), $(echo "$output1" | grep "Total: " | sed 's/   Total: //g'), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0"
@@ -77,7 +77,7 @@ for cores in ${CoreList}; do
     else
       for slices in $AggregationSizes; do
         echo "DEBUG: Starting normal run with ${cores} cores, ${executors} executors and ${slices} aggregation slices ..." >> ${debug_log_filename}
-      kernel_args=" --hpx:threads=${cores} --cuda_streams_per_gpu=${executors} --cuda_buffer_capacity=1024 --hydro_device_kernel_type=CUDA --hydro_host_kernel_type=DEVICE_ONLY --amr_boundary_kernel_type=AMR_OPTIMIZED --max_executor_slices=${slices} --cuda_number_gpus=1 "
+      kernel_args=" --hpx:threads=${cores} --executor_per_gpu=${executors} --max_gpu_executor_queue_length=1024 --hydro_device_kernel_type=CUDA --hydro_host_kernel_type=DEVICE_ONLY --amr_boundary_kernel_type=AMR_OPTIMIZED --max_kernels_fused=${slices} --number_gpus=1 "
         output1="$(./build/octotiger/build/octotiger ${hpx_args} ${kernel_args} ${octotiger_args} )"
         echo "DEBUG: ${output1}" >> ${debug_log_filename}
         # cleanup
