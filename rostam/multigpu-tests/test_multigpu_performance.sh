@@ -1,167 +1,170 @@
-#!/bin/bash
-set -eux
-IFS=$'\n\t'
+#!/usr/bin/env bash
 
-function extract_compute_time {
-	local compute_time=$(echo $1 | grep 'Computation:' | sed 's/Computation://g' | sed 's/(.*)//g')
-	echo "${compute_time}"
-}	
-function extract_total_time {
-	local total_time=$(echo $1 | grep 'Total:' | sed 's/Total://g' | sed 's/(.*)//g')
-	echo "${total_time}"
-}	
+set -e
+
+required_modules="gcc/11 cuda/12 hwloc cmake"
+corecount="1 2 4 8 16 32 64 "
+gpucount="1 2 4 "
+executorcount="1 2 4 8 16 32 64 128 "
+slicescount="1 2 4 8 16 32 64 128 "
+gpu_backends="CUDA KOKKOS_CUDA"
+cpu_backends="LEGACY KOKKOS DEVICE_ONLY"
+scenario_name="BLAST"
+max_level=3
+scenario_parameters=" --config_file=blast.ini --unigrid=1 --disable_output=on --max_level=${max_level} --stop_step=25 --stop_time=25 --print_times_per_timestep=1 --optimize_local_communication=1"
+hpx_parameters="--hpx:ini=hpx.stacks.use_guard_pages!=0 --hpx:queuing=local-priority-lifo "
+counter_parameters="--hpx:print-counter=/octotiger*/compute/gpu*kokkos* --hpx:print-counter=/arithmetics/add@/octotiger*/compute/gpu/hydro_kokkos --hpx:print-counter=/arithmetics/add@/octotiger*/compute/gpu/hydro_kokkos_aggregated --hpx:print-counter=/arithmetics/add@/cppuddle*/number_creations/ --hpx:print-counter=/arithmetics/add@/cppuddle*/number_allocations/ --hpx:print-counter=/arithmetics/add@/cppuddle*/number_deallocations/"
+spack_spec="octotiger@0.10.0 +cuda +kokkos cuda_arch=80 griddim=8 %gcc@11 ^hpx@1.9.1 generator=make max_cpu_count=256 networking=none lci_server=ofi ~disable_async_gpu_futures ^python@3.6.15 ^kokkos@4.0.01 ^cppuddle@0.3.0 number_buffer_buckets=128 max_number_gpus=8 +hpx +allocator_counters"
 
 # Timestamp
-today=`date +%Y-%m-%d_%H:%M`
-# for measuring
-start=`date +%s`
+today=`date +%Y-%m-%d_%H_%M`
+#git clone --recurse-submodules https://github.com/STEllAR-GROUP/octotiger experiment_pure_hydro_benchmark_run_${today}
+#cd experiment_pure_hydro_benchmark_run_${today}
+#git checkout develop
+echo "Creating experiment directory..." | tee octotiger_benchmark.log
 
-# Experiment configuration (obsolete, gets sourced from extra file below)
-#experiment_description="Run rotating star node-level scaling with KOKKOS SIMD and STD SIMD on Intel icelake"
-apex_args=" APEX_SCREEN_OUTPUT=1 APEX_CSV_OUTPUT=1 KOKKOS_PROFILE_LIBRARY=build/hpx/lib/libhpx_apex.so "
-kernel_args=" --hydro_device_kernel_type=OFF --multipole_device_kernel_type=OFF --monopole_device_kernel_type=OFF --hydro_host_kernel_type=KOKKOS --multipole_host_kernel_type=KOKKOS --monopole_host_kernel_type=KOKKOS --amr_boundary_kernel_type=AMR_OPTIMIZED --optimize_local_communication=1"
-octotiger_args=" --config_file=src/octotiger/test_problems/blast/blast.ini --unigrid=1 --max_level=3 --stop_step=15 --stop_time=25 --disable_output=1 "
-#cpu_platform="$(lscpu | grep "Model name:" | sed 's/Model name: *//')"
-#simd_extensions="SCALAR AVX AVX512"
-#simd_libraries="KOKKOS STD"
-#NodeList="8 16 32 64"
-#output_file="icelake_simd_test_$today"
-#debug_output_file="debug_icelake_simd_test_$today"
+mkdir octotiger_benchmark_${scenario_name}-${max_level}
+cd benchmark_pure_hydro_initial_${today}
+echo "Loading required modules: ${required_modules}" | tee -a octotiger_benchmark.log
+module load ${required_modules}
+echo "Print the basic information.."| tee -a octotiger_benchmark.log
 
-#gpu_backends="CUDA OFF"
-#max_worker_list="1 2 3 4 8 16 32 64"
-#max_gpu_list="1 2 4"
-#core_iterate_list="1 2 3 4 8 16 32 64"
-
-future_types="with-hpx-cuda-polling without-hpx-cuda-polling "
-hpx_mutex_modes="OFF ON "
-gpu_backends="OFF_LEGACY OFF_KOKKOS CUDA KOKKOS_CUDA "
-max_core_count=40
-max_worker_list="10 20 40"
-max_gpu_list="1 2"
-core_iterate_list="10 20 40"
-
-workers_per_gpu="1 2 4 8 10 20 40"
-
-#echo "Loading config file $1 ..."
-#source "$1"
-
-# Software config
-toolchain_commit="$(git log --oneline | head -n 1)"
-cd src/octotiger
-octotiger_commit="$(git log --oneline | head -n 1)"
+# Output to log
+echo "# Date of run $today" | tee -a octotiger_benchmark.log
+echo "# Modules: $(module list)" | tee -a octotiger_benchmark.log
+echo "# Spack Root: $(printenv | grep SPACK_ROOT)" | tee -a octotiger_benchmark.log
+echo "# Spack version: $(spack --version)" | tee -a octotiger_benchmark.log
+cd $(spack repo list | grep octotiger-spack | awk -F ' ' '{print $2}')
+echo "# Spack Octotiger repo version: $(git log --oneline --no-abbrev-commit | head -n 1)" | tee -a octotiger_benchmark.log
 cd -
-cd src/hpx
-hpx_commit="$(git log --oneline | head -n 1)"
+echo "# Spack spec spec: ${spack_spec}"
+echo "Concretizing spec.."| tee -a octotiger_benchmark.log
+echo "# Concrete spec: $(spack spec ${spack_spec})"  | tee -a octotiger_benchmark.log
+
+# Output to CSV
+echo "# Octo-Tiger Node-Level Benchmark run" | tee octotiger_benchmark.csv
+echo "# ===================================" | tee -a octotiger_benchmark.csv 
+echo "# Date of run $today" | tee -a octotiger_benchmark.csv
+echo "# Scenario name ${scenario_name} at max level ${max_level}" | tee
+echo "# Modules: $(module list)" | tee -a octotiger_benchmark.csv
+echo "# Spack Root: $(printenv | grep SPACK_ROOT)" | tee -a octotiger_benchmark.csv
+echo "# Spack version: $(spack --version)" | tee -a octotiger_benchmark.csv
+cd $(spack repo list | grep octotiger-spack | awk -F ' ' '{print $2}')
+echo "# Spack Octotiger repo version: $(git log --oneline --no-abbrev-commit | head -n 1)" | tee -a octotiger_benchmark.csv
 cd -
-cd src/kokkos
-kokkos_commit="$(git log --oneline | head -n 1)"
-cd -
-cd src/hpx-kokkos
-hpxkokkos_commit="$(git log --oneline | head -n 1)"
-cd -
-echo "# Date of run $today" | tee LOG.txt
-echo "# " | tee -a LOG.txt
-echo "# " | tee -a LOG.txt
-echo "# Octotiger Args: ${octotiger_args}" | tee -a LOG.txt
-echo "# Kernel Args: ${kernel_args}" | tee -a LOG.txt
-echo "# " | tee -a LOG.txt
-echo "# Buildscripts Commit: ${toolchain_commit}" | tee -a LOG.txt
-echo "# Octotiger Commit: ${octotiger_commit}" | tee -a LOG.txt
-echo "# HPX Commit: ${hpx_commit}" | tee -a LOG.txt
-echo "# Kokkos Commit: ${kokkos_commit}" | tee -a LOG.txt
-echo "# HPX-Kokkos Commit: ${hpxkokkos_commit}" | tee -a LOG.txt
-echo "# " | tee -a LOG.txt
-echo "# " | tee -a LOG.txt
-echo "# Kernel args: ${kernel_args}" | tee -a LOG.txt
-echo "# Octo-Tiger Scenario: ${octotiger_args}" | tee -a LOG.txt
-echo "# " | tee -a LOG.txt
-echo "# " | tee -a LOG.txt
-echo "# Experiment:" | tee -a LOG.txt
-echo "# host kernel type, gpu kernel type, recycling mode, hpx aware allocators, hpx mutex mode, max workers, number gpus, workers per gpu, cores, computation time, total time" | tee -a LOG.txt
-echo "DEBUG: Starting DEBUG-LOG.txt..." > DEBUG-LOG.txt
-
-module load cuda llvm/12 hwloc cmake
-#rm -rf build src/hdf5 
-#./build-all.sh Release with-CC-clang with-cuda without-mpi without-papi with-apex with-kokkos with-simd with-hpx-backend-multipole with-hpx-backend-monopole with-hpx-cuda-polling without-otf2 boost hdf5 silo jemalloc vc hpx kokkos cppuddle octotiger
-
-export APEX_SCREEN_OUTPUT=1 
-export APEX_CSV_OUTPUT=1 
-#export KOKKOS_PROFILE_LIBRARY=$(pwd)/build/hpx/lib64/libhpx_apex.so
+echo "# Spack spec spec: ${spack_spec}" | tee -a octotiger_benchmark.csv
+echo "# Concrete spec: $(spack spec ${spack_spec})"  | tee -a octotiger_benchmark.csv
+echo "# Core Axis: ${corecount}" | tee -a octotiger_benchmark.csv
+echo "# GPU  Axis: ${gpucount}" | tee -a octotiger_benchmark.csv
+echo "# Executors Axis: ${executorcount}" | tee -a octotiger_benchmark.csv
+echo "# Fusion Axis: ${slicescount}" | tee -a octotiger_benchmark.csv
+echo "# CPU Kernel Axis: ${cpu_backends}" | tee -a octotiger_benchmark.csv
+echo "# GPU Kernel Axis: ${gpu_backends}" | tee -a octotiger_benchmark.csv
+echo "# Octo-Tiger parameters: ${scenario_parameters}" | tee -a octotiger_benchmark.csv
+echo "# Fixed HPX parameters: ${hpx_parameters}" | tee -a octotiger_benchmark.csv
+echo "# Counter parameters: ${counter_parameters}" | tee -a octotiger_benchmark.csv
 
 
-# Run scaling test
-IFS=' '
-for gpu_kernel_type in ${gpu_backends}; do
-  host_kernel_type="DEVICE_ONLY"
-  max_slices=4
-  if [ "${gpu_kernel_type}" = "OFF_LEGACY" ]; then
-    host_kernel_type="LEGACY"
+#Setup
+echo "Installing spec..."| tee -a octotiger_benchmark.log
+spack install ${spack_spec} | tee -a octotiger_benchmark.log
+echo "Loading spec..."| tee -a octotiger_benchmark.log
+spack unload --all
+spack load ${spack_spec} 
+
+echo "Testing binary..."| tee -a octotiger_benchmark.log
+octotiger --help
+
+echo "Move scenario files to experiment directory..."| tee -a octotiger_benchmark.log
+cp ../multigpu-tests*.sh .
+cp ../*.ini .
+
+set +e
+
+echo "Using binary: $(which octotiger)..." | tee -a octotiger_benchmark.log
+
+
+
+
+
+
+echo "scenario name, max level, cpu kernel type, gpu kernel type, future_type, slices, executors, nodes, processcount, total time, computation time, number creation, number allocations, number deallocations, number hydro kokkos launches, number aggregated hydro kokkos launches, number hydro cuda launches, number aggregated cuda kokkos launches, min time-per-timestep, max time-per-timestep," \
+     "median time-per-timestep, average time-per-timestep, list of times per timestep" \
+     | tee octotiger_benchmark.csv
+
+for cpu_kernel_type in $cpu_backends; do
+
+for cores in $corecount; do
+  if [[ "${cpu_kernel_type}" == "DEVICE_ONLY" ]]; then
+    for gpu_kernel_type in $gpu_backends; do
+      for gpus in $gpucount; do
+        for executors in $executorcount; do
+          for slices in $slicescount; do
+            performance_parameters="--hpx:threads=${cores} --multipole_device_kernel_type=${gpu_kernel_type} --multipole_host_kernel_type=${cpu_kernel_type} --monopole_device_kernel_type=${gpu_kernel_type} --monopole_host_kernel_type=${cpu_kernel_type} --hydro_device_kernel_type=${gpu_kernel_type} --hydro_host_kernel_type=${cpu_kernel_type} --amr_boundary_kernel_type=AMR_OPTIMIZED --max_kernels_fused=${slices} --executors_per_gpu=${executors} --number_gpus=${gpus}"
+            # run gpu-only scenario:
+            echo "octotiger ${scenario_parameters} ${hpx_parameters} ${performance_parameters} ${counter_parameters}" | tee current_run.out
+            octotiger ${scenario_parameters} ${hpx_parameters} ${performance_parameters} ${counter_parameters} | tee current_run.out
+            # append output to log
+            cat current_run.ot >> octotiger_benchmark.log
+            # analyse output for relevant counters and runtime
+            echo "${scenario_name}, ${max_level}, ${cpu_kernel_type}, ${gpu_kernel_type}, ASYNC, ${slices}, ${executors}, 1, 1, " \
+                 "$(cat current_run.out | grep Total: | sed -n 1p | awk -F ' ' '{print $2}')," \
+                 "$(cat current_run.out | grep Computation: | sed -n 1p | awk -F ' ' '{print $2}')," \
+                 "$(cat current_run.out | grep number_creations | awk -F ',' '{print $5}')," \
+                 "$(cat current_run.out | grep number_allocations | awk -F ',' '{print $5}')," \
+                 "$(cat current_run.out | grep number_deallocations | awk -F ',' '{print $5}')," \
+                 "$(cat current_run.out | grep arithmetics.*hydro_kokkos, | awk -F ',' '{print $5}')," \
+                 "$(cat current_run.out | grep arithmetics.*hydro_kokkos_aggregated, | awk -F ',' '{print $5}')," \
+                 "$(cat current_run.out | grep arithmetics.*hydro_cuda, | awk -F ',' '{print $5}')," \
+                 "$(cat current_run.out | grep arithmetics.*hydro_cuda_aggregated, | awk -F ',' '{print $5}')," \
+                 "$(cat current_run.out | grep Min\ time-per-timestep: | sed -n 1p | awk -F ' ' '{print $3}')," \
+                 "$(cat current_run.out | grep Max\ time-per-timestep: | sed -n 1p | awk -F ' ' '{print $3}')," \
+                 "$(cat current_run.out | grep Median\ time-per-timestep: | sed -n 1p | awk -F ' ' '{print $3}')," \
+                 "$(cat current_run.out | grep Average\ time-per-timestep: | sed -n 1p | awk -F ' ' '{print $3}')," \
+                 "\"$(cat current_run.out | grep List\ of\ times-per-timestep | sed -n 1p | cut -d " " -f4-)\"" \
+                 | tee -a octotiger_benchmark.csv
+          done # end slices
+        done # end executors
+      done # end gpus
+    done #gpu_kernel_type
+  else
+    executors=0
+    slices=1
+    gpus=0
     gpu_kernel_type="OFF"
-    max_slices=1
-    future_types="without-hpx-cuda-polling"
+    performance_parameters="--hpx:threads=${cores} --multipole_device_kernel_type=${gpu_kernel_type} --multipole_host_kernel_type=${cpu_kernel_type} --monopole_device_kernel_type=${gpu_kernel_type} --monopole_host_kernel_type=${cpu_kernel_type} --hydro_device_kernel_type=${gpu_kernel_type} --hydro_host_kernel_type=${cpu_kernel_type} --amr_boundary_kernel_type=AMR_OPTIMIZED --max_kernels_fused=${slices} --executors_per_gpu=${executors} --number_gpus=${gpus}"
+    echo "octotiger ${scenario_parameters} ${hpx_parameters} ${performance_parameters} ${counter_parameters}" | tee current_run.out
+    octotiger ${scenario_parameters} ${hpx_parameters} ${performance_parameters} ${counter_parameters} | tee current_run.out
+    # append output to log
+    cat current_run.ot >> octotiger_benchmark.log
+    # analyse output for relevant counters and runtime
+    echo "${scenario_name}, ${max_level}, ${cpu_kernel_type}, ${gpu_kernel_type}, ASYNC, ${slices}, ${executors}, 1, 1, " \
+         "$(cat current_run.out | grep Total: | sed -n 1p | awk -F ' ' '{print $2}')," \
+         "$(cat current_run.out | grep Computation: | sed -n 1p | awk -F ' ' '{print $2}')," \
+         "$(cat current_run.out | grep number_creations | awk -F ',' '{print $5}')," \
+         "$(cat current_run.out | grep number_allocations | awk -F ',' '{print $5}')," \
+         "$(cat current_run.out | grep number_deallocations | awk -F ',' '{print $5}')," \
+         "$(cat current_run.out | grep arithmetics.*hydro_kokkos, | awk -F ',' '{print $5}')," \
+         "$(cat current_run.out | grep arithmetics.*hydro_kokkos_aggregated, | awk -F ',' '{print $5}')," \
+         "$(cat current_run.out | grep arithmetics.*hydro_cuda, | awk -F ',' '{print $5}')," \
+         "$(cat current_run.out | grep arithmetics.*hydro_cuda_aggregated, | awk -F ',' '{print $5}')," \
+         "$(cat current_run.out | grep Min\ time-per-timestep: | sed -n 1p | awk -F ' ' '{print $3}')," \
+         "$(cat current_run.out | grep Max\ time-per-timestep: | sed -n 1p | awk -F ' ' '{print $3}')," \
+         "$(cat current_run.out | grep Median\ time-per-timestep: | sed -n 1p | awk -F ' ' '{print $3}')," \
+         "$(cat current_run.out | grep Average\ time-per-timestep: | sed -n 1p | awk -F ' ' '{print $3}')," \
+         "\"$(cat current_run.out | grep List\ of\ times-per-timestep | sed -n 1p | cut -d " " -f4-)\"" \
+         | tee -a octotiger_benchmark.csv
   fi
-  if [ "${gpu_kernel_type}" = "OFF_KOKKOS" ]; then
-    host_kernel_type="KOKKOS"
-    gpu_kernel_type="OFF"
-    max_slices=1
-    future_types="without-hpx-cuda-polling"
-  fi
-  kernel_args=" --hydro_device_kernel_type=${gpu_kernel_type} --multipole_device_kernel_type=${gpu_kernel_type} --monopole_device_kernel_type=${gpu_kernel_type} --hydro_host_kernel_type=${host_kernel_type} --multipole_host_kernel_type=${host_kernel_type} --monopole_host_kernel_type=${host_kernel_type} --amr_boundary_kernel_type=AMR_OPTIMIZED --optimize_local_communication=1 --cuda_streams_per_gpu=32 --max_executor_slices=${max_slices}"
-  for future_type in ${future_types}; do
-    ./build-all.sh Release with-CC-clang with-cuda without-mpi without-papi with-apex with-kokkos with-simd with-hpx-backend-multipole with-hpx-backend-monopole ${future_type} without-otf2 hpx kokkos cppuddle octotiger
-    for hpx_mutex_mode in ${hpx_mutex_modes}; do
-      # iterate maximum workers
-      for max_worker in ${max_worker_list}; do
-        # early exit for cpu-only run
-        if [[ "${host_kernel_type}" != "DEVICE_ONLY" ]]; then
-          if [[ ${max_worker} -lt ${max_core_count} ]]; then
-            continue
-          fi
-        fi
-        # iterate gpus
-        for number_gpus in ${max_gpu_list}; do
-          # early exit for cpu-only run
-          if [[ "${host_kernel_type}" != "DEVICE_ONLY" ]]; then
-            if [[ ${number_gpus} -gt 1 ]]; then
-              break
-            fi
-          fi
-          sed -i "s/-DCPPUDDLE_WITH_MAX_NUMBER_WORKERS=.*/-DCPPUDDLE_WITH_MAX_NUMBER_WORKERS=${max_worker} \\\\/g" build-cppuddle.sh
-          sed -i "s/-DCPPUDDLE_WITH_NUMBER_GPUS=.*/-DCPPUDDLE_WITH_NUMBER_GPUS=${number_gpus} \\\\/g" build-cppuddle.sh
-          sed -i "s/-DCPPUDDLE_DEACTIVATE_BUFFER_RECYCLING=.*/-DCPPUDDLE_DEACTIVATE_BUFFER_RECYCLING=OFF \\\\/g" build-cppuddle.sh
-          sed -i "s/-DCPPUDDLE_WITH_HPX_AWARE_ALLOCATORS=.*/-DCPPUDDLE_WITH_HPX_AWARE_ALLOCATORS=ON \\\\/g" build-cppuddle.sh
-          sed -i "s/-DCPPUDDLE_WITH_HPX=.*/-DCPPUDDLE_WITH_HPX=ON \\\\/g" build-cppuddle.sh
-          sed -i "s/-DCPPUDDLE_WITH_HPX_MUTEX=.*/-DCPPUDDLE_WITH_HPX_MUTEX=${hpx_mutex_mode} \\\\/g" build-cppuddle.sh
-            ./build-all.sh Release with-CC-clang with-cuda without-mpi without-papi with-apex with-kokkos with-simd with-hpx-backend-multipole with-hpx-backend-monopole with-hpx-cuda-polling without-otf2 cppuddle octotiger
-          # Number of cores used (up until max worker is hit)
-          for number_cores in ${core_iterate_list}; do
-            cores_per_gpu=$((max_worker/number_gpus))
-            echo "${gpu_kernel_type},${max_worker},${number_gpus},${cores_per_gpu},${number_cores}"
-            output1="$(build/octotiger/build/octotiger --hpx:threads=${number_cores} ${octotiger_args} ${kernel_args})"
-            echo "DEBUG: ${output1}" >> DEBUG-LOG.txt
-            compute_time=$(extract_compute_time "${output1}")
-            total_time=$(extract_total_time "${output1}")
-            compute_time_entry="${host_kernel_type},${gpu_kernel_type},${future_type},${hpx_mutex_mode},${max_worker},${number_gpus},${cores_per_gpu},${number_cores},${compute_time}, ${total_time}"
-            echo "$compute_time_entry" | tee -a LOG.txt
-            if [[ ${number_cores} -eq ${max_worker} ]]; then
-              break
-            fi
-          done
-        done
-      done
-    done
-  done
-done 
+done #end cores
+done #cpu_kernel_type
 
-# Total experiment runtime:
-end=`date +%s` # for measuring
-runtime=$((end-start))
-echo "# " | tee -a LOG.txt
-echo "# " | tee -a LOG.txt
-echo "# Total experiment runtime: ${runtime}" | tee -a LOG.txt
-echo "DEBUG: Experiment ended sucessfully!" >> DEBUG-LOG.txt
-cp LOG.txt ${output_file}
-cp DEBUG-LOG.txt ${debug_output_file}
+exit 0
 
 
+
+echo "Extracting done! Zipping and printing results..." | tee -a octotiger_benchmark.log
+cat octotiger_benchmark.csv | tee -a octotiger_benchmark.log
+
+scriptname=$(basename "$0")
+tar -cvf octotiger_benchmark_${scenario_name}-${max_level}_${today}.tar octotiger_benchmark.log octotiger_benchmark.csv \
+       	 blast.ini scriptname
