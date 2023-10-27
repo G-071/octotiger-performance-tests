@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -x
+
 # Config
 # --------------
 scenario_name="hydro_cppuddle"
@@ -7,11 +9,11 @@ corelist="8 16 32 64 128"
 max_level=3
 hpx_parameters="--hpx:use-process-mask --hpx:numa-sensitive --hpx:print-bind"
 scenario_parameters=" --problem=blast --odt=0.1 --gravity=off --unigrid=1 --cuda_number_gpus=1 --theta=0.34  --max_level=${max_level} --correct_am_hydro=0 --stop_time=25 --stop_step=25  --disable_output=1 --print_times_per_timestep=1"
-kernel_parameters="--monopole_host_kernel_type=DEVICE_ONLY --multipole_host_kernel_type=DEVICE_ONLY --monopole_device_kernel_type=KOKKOS_CUDA --multipole_device_kernel_type=KOKKOS_CUDA --hydro_device_kernel_type=KOKKOS_CUDA --hydro_host_kernel_type=DEVICE_ONLY --amr_boundary_kernel_type=AMR_OPTIMIZED"
+kernel_parameters="--monopole_host_kernel_type=DEVICE_ONLY --multipole_host_kernel_type=DEVICE_ONLY --monopole_device_kernel_type=KOKKOS_HIP --multipole_device_kernel_type=KOKKOS_HIP --hydro_device_kernel_type=KOKKOS_HIP --hydro_host_kernel_type=DEVICE_ONLY --amr_boundary_kernel_type=AMR_OPTIMIZED"
 kernel_parameters_cpu_baseline="--monopole_host_kernel_type=LEGACY --multipole_host_kernel_type=LEGACY --monopole_device_kernel_type=OFF --multipole_device_kernel_type=OFF --hydro_device_kernel_type=OFF --hydro_host_kernel_type=LEGACY --amr_boundary_kernel_type=AMR_OPTIMIZED"
 counter_parameters="--hpx:print-counter=/octotiger*/compute/gpu*kokkos* --hpx:print-counter=/arithmetics/add@/octotiger*/compute/gpu/hydro_cuda --hpx:print-counter=/arithmetics/add@/octotiger*/compute/gpu/hydro_cuda_aggregated --hpx:print-counter=/arithmetics/add@/octotiger*/compute/gpu/hydro_kokkos --hpx:print-counter=/arithmetics/add@/octotiger*/compute/gpu/hydro_kokkos_aggregated --hpx:print-counter=/arithmetics/add@/cppuddle*/number_creations/ --hpx:print-counter=/arithmetics/add@/cppuddle*/number_allocations/ --hpx:print-counter=/arithmetics/add@/cppuddle*/number_deallocations/"
 #basic_spec="octotiger@master build_type=Release +kokkos +cuda cuda_arch=80 %gcc@11 ^kokkos@4.0.01 ^silo~mpi ^hpx@1.9.1 max_cpu_count=256 networking=none"
-basic_spec="octotiger@master+rocm+kokkos amdgpu_target=gfx908@master%rocmcc@5.4.6 ^asio@1.16.0 ^hip@5.4.6 ^llvm-amdgpu@5.4.6^kokkos amdgpu_target=gfx908 ^hpx-kokkos amdgpu_target=gfx908 ^silo~mpi%gcc ^hpx max_cpu_count=256 networking=none=128 amdgpu_target=gfx908 "
+basic_spec="octotiger@master+rocm+kokkos amdgpu_target=gfx908%rocmcc@5.4.6 ^asio@1.16.0 ^hip@5.4.6 ^llvm-amdgpu@5.4.6^kokkos amdgpu_target=gfx908 ^hpx-kokkos amdgpu_target=gfx908 ^silo~mpi%gcc ^hpx max_cpu_count=256 networking=none amdgpu_target=gfx908 "
 function extract_times_and_counters {
 
 	local output_string=$(\
@@ -32,6 +34,9 @@ function extract_times_and_counters {
        )
 	echo "${output_string}"
 }	
+
+module load rocm/5.4.6 gcc/11
+export AMD_DIRECT_DISPATCH=0
 
 # 0. Intro Infos
 # --------------
@@ -59,7 +64,7 @@ executors=1
 echo "Starting baseline testing" | tee -a ${scenario_name}_benchmark.log
 echo "Installing spec..." | tee -a ${scenario_name}_benchmark.log
 spack install --fresh ${basic_spec} ~async_gpu_futures ^cppuddle@0.3.1 ~buffer_recycling ~buffer_content_recycling ~executor_recycling max_number_gpus=8 +allocator_counters
-spack load --fresh ${basic_spec} ~async_gpu_futures ^cppuddle@0.3.1 ~buffer_recycling ~buffer_content_recycling ~executor_recycling max_number_gpus=8 +allocator_counters
+spack load ${basic_spec} ~async_gpu_futures ^cppuddle@0.3.1 ~buffer_recycling ~buffer_content_recycling ~executor_recycling max_number_gpus=8 +allocator_counters
 for cores in ${corelist}; do
       echo "Running with ${cores} threads..." | tee -a ${scenario_name}_benchmark.log
       octotiger --hpx:threads=${cores} ${hpx_parameters} ${scenario_parameters} --executors_per_gpu=${executors} --max_kernels_fused=${slices} ${kernel_parameters_cpu_baseline} ${counter_parameters} | tee current_output.log
@@ -74,19 +79,19 @@ spack unload
 
 slices=1
 executors=1
-echo "Starting baseline testing" | tee -a ${scenario_name}_benchmark.log
-echo "Installing spec..." | tee -a ${scenario_name}_benchmark.log
-spack install --fresh ${basic_spec} ~async_gpu_futures ^cppuddle@0.3.1 ~buffer_recycling ~buffer_content_recycling ~executor_recycling max_number_gpus=8 +allocator_counters
-spack load ${basic_spec} ~async_gpu_futures ^cppuddle@0.3.1 ~buffer_recycling ~buffer_content_recycling ~executor_recycling max_number_gpus=8 +allocator_counters
-for cores in ${corelist}; do
-      echo "Running with ${cores} threads..." | tee -a ${scenario_name}_benchmark.log
-      octotiger --hpx:threads=${cores} ${hpx_parameters} ${scenario_parameters} --executors_per_gpu=${executors} --max_kernels_fused=${slices} ${kernel_parameters} ${counter_parameters} | tee current_output.log
-      cat current_output.log >> ${scenario_name}_benchmark.log
-      output_metrics=$(extract_times_and_counters "current_output.log")
-      echo "${scenario_name}_baseline, ${max_level}, ${cores}, ${slices}, ${executors}, ${output_metrics} " \
-           | tee -a ${scenario_name}_benchmark.csv
-done
-spack unload
+# echo "Starting baseline testing" | tee -a ${scenario_name}_benchmark.log
+# echo "Installing spec..." | tee -a ${scenario_name}_benchmark.log
+# spack install --fresh ${basic_spec} ~async_gpu_futures ^cppuddle@0.3.1 ~buffer_recycling ~buffer_content_recycling ~executor_recycling max_number_gpus=8 +allocator_counters
+# spack load ${basic_spec} ~async_gpu_futures ^cppuddle@0.3.1 ~buffer_recycling ~buffer_content_recycling ~executor_recycling max_number_gpus=8 +allocator_counters
+# for cores in ${corelist}; do
+#       echo "Running with ${cores} threads..." | tee -a ${scenario_name}_benchmark.log
+#       octotiger --hpx:threads=${cores} ${hpx_parameters} ${scenario_parameters} --executors_per_gpu=${executors} --max_kernels_fused=${slices} ${kernel_parameters} ${counter_parameters} | tee current_output.log
+#       cat current_output.log >> ${scenario_name}_benchmark.log
+#       output_metrics=$(extract_times_and_counters "current_output.log")
+#       echo "${scenario_name}_baseline, ${max_level}, ${cores}, ${slices}, ${executors}, ${output_metrics} " \
+#            | tee -a ${scenario_name}_benchmark.csv
+# done
+# spack unload
 
 # 2.1 Run with executor recycling
 # -------------------------------------
@@ -106,19 +111,19 @@ spack unload
 
 # 2.2 Run with executor recycling
 # -------------------------------------
-echo "Starting testing with buffer recycling" | tee -a ${scenario_name}_benchmark.log
-echo "Installing spec..." | tee -a ${scenario_name}_benchmark.log
-spack install --fresh ${basic_spec} ~async_gpu_futures ^cppuddle@0.3.1 +buffer_recycling +buffer_content_recycling ~executor_recycling max_number_gpus=8 +allocator_counters
-spack load ${basic_spec} ~async_gpu_futures ^cppuddle@0.3.1 +buffer_recycling +buffer_content_recycling ~executor_recycling max_number_gpus=8 +allocator_counters
-for cores in ${corelist}; do
-      echo "Running with ${cores} threads..." | tee -a ${scenario_name}_benchmark.log
-      octotiger --hpx:threads=${cores} ${hpx_parameters} ${scenario_parameters} --executors_per_gpu=${executors} --max_kernels_fused=${slices} ${kernel_parameters} ${counter_parameters} | tee current_output.log
-      cat current_output.log >> ${scenario_name}_benchmark.log
-      output_metrics=$(extract_times_and_counters "current_output.log")
-      echo "${scenario_name}_with_buffer_recycling, ${max_level}, ${cores}, ${slices}, ${executors}, ${output_metrics} " \
-           | tee -a ${scenario_name}_benchmark.csv
-done
-spack unload
+# echo "Starting testing with buffer recycling" | tee -a ${scenario_name}_benchmark.log
+# echo "Installing spec..." | tee -a ${scenario_name}_benchmark.log
+# spack install --fresh ${basic_spec} ~async_gpu_futures ^cppuddle@0.3.1 +buffer_recycling +buffer_content_recycling ~executor_recycling max_number_gpus=8 +allocator_counters
+# spack load ${basic_spec} ~async_gpu_futures ^cppuddle@0.3.1 +buffer_recycling +buffer_content_recycling ~executor_recycling max_number_gpus=8 +allocator_counters
+# for cores in ${corelist}; do
+#       echo "Running with ${cores} threads..." | tee -a ${scenario_name}_benchmark.log
+#       octotiger --hpx:threads=${cores} ${hpx_parameters} ${scenario_parameters} --executors_per_gpu=${executors} --max_kernels_fused=${slices} ${kernel_parameters} ${counter_parameters} | tee current_output.log
+#       cat current_output.log >> ${scenario_name}_benchmark.log
+#       output_metrics=$(extract_times_and_counters "current_output.log")
+#       echo "${scenario_name}_with_buffer_recycling, ${max_level}, ${cores}, ${slices}, ${executors}, ${output_metrics} " \
+#            | tee -a ${scenario_name}_benchmark.csv
+# done
+# spack unload
 
 # 3. Run with buffer recycling
 # -------------------------------------
