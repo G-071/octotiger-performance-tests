@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def plot_multibar_cppuddle_features(raw_data):
+def plot_multibar_cppuddle_features(raw_data, amd_node):
     print(raw_data["scenario name"].unique())
     filtered_data = raw_data[['scenario name', 'cores', 'total time',
                               'median time-per-timestep']]
@@ -50,9 +50,9 @@ def plot_multibar_cppuddle_features(raw_data):
     print(complete_aggregation_bars)
     print(with_async_bars)
 
-    labels = baseline_bars['cores'].unique()
+    labels = baseline_cpu_bars['cores'].unique()
     barWidth = 0.11
-    br1 = np.arange(len(baseline_bars))
+    br1 = np.arange(len(baseline_cpu_bars))
     br2 = [x + barWidth for x in br1]
     br3 = [x + barWidth for x in br2]
     br4 = [x + barWidth for x in br3]
@@ -65,9 +65,10 @@ def plot_multibar_cppuddle_features(raw_data):
     bar0 = ax.bar(br7, baseline_cpu_bars['median time-per-timestep'],
            color='gray', width=barWidth, edgecolor='black',
            label='CPU-only Baseline (LEGACY kernel)')
-    bar1 = ax.bar(br1, baseline_bars['median time-per-timestep'],
-           color='red', width=barWidth, edgecolor='black',
-           label='GPU-accelerated Baseline: No CPPuddle Feature activated')
+    if len(baseline_bars['median time-per-timestep']) > 0:
+        bar1 = ax.bar(br1, baseline_bars['median time-per-timestep'],
+               color='red', width=barWidth, edgecolor='black',
+               label='GPU-accelerated Baseline: No CPPuddle Feature activated')
     bar2 = ax.bar(br2, executor_recycling_bars['median time-per-timestep'],
            color='saddlebrown', width=barWidth, edgecolor='black',
            label='1. Feature activated (CPPuddle): GPU Executor Pool')
@@ -89,10 +90,15 @@ def plot_multibar_cppuddle_features(raw_data):
     ax.set_ylabel("Median time-per-timestep in ms")
     #ax.set_yscale('log')
     #ax.set_ylim([0, 8000])
-    ax.set_ylim([0, 3600])
-    ax.set_title("Runtime Impact of CPPuddle Features used in Octo-Tiger\n(Used Scenario: Octo-Tiger Blast Benchmark, 512 Sub-Grids) \n(Used Hardware: Intel Icelake CPU / NVIDIA A100 GPU)")
+    if amd_node:
+        ax.set_ylim([0, 3900])
+        ax.set_title("Runtime Impact of CPPuddle Features used in Octo-Tiger\n(Used Scenario: Octo-Tiger Blast Benchmark, 512 Sub-Grids) \n(Used Hardware: AMD Epyc2 CPU / AMD MI100 GPU)")
+    else:
+        ax.set_ylim([0, 3600])
+        ax.set_title("Runtime Impact of CPPuddle Features used in Octo-Tiger\n(Used Scenario: Octo-Tiger Blast Benchmark, 512 Sub-Grids) \n(Used Hardware: Intel Icelake CPU / NVIDIA A100 GPU)")
     ax.bar_label(bar0, padding=3, rotation='vertical', fmt='%.0fms')
-    ax.bar_label(bar1, padding=3, rotation='vertical', fmt='%.0fms')
+    if len(baseline_bars['median time-per-timestep']) > 0:
+        ax.bar_label(bar1, padding=3, rotation='vertical', fmt='%.0fms')
     ax.bar_label(bar2, padding=3, rotation='vertical', fmt='%.0fms')
     ax.bar_label(bar3, padding=3, rotation='vertical', fmt='%.0fms')
     ax.bar_label(bar4, padding=3, rotation='vertical', fmt='%.0fms')
@@ -103,7 +109,7 @@ def plot_multibar_cppuddle_features(raw_data):
     plt.savefig("cppuddle_runs.pdf", format="pdf", bbox_inches="tight")
     #plt.show()
 
-def plot_fractions_bars(raw_data):
+def plot_fractions_bars(raw_data, amd_node):
     print(raw_data["scenario name"].unique())
     filtered_data = raw_data[['scenario name', 'cores', 'total time',
                               'median time-per-timestep']]
@@ -116,10 +122,11 @@ def plot_fractions_bars(raw_data):
         filtered_data['scenario name'] ==
         "hydro_cppuddle_with_buffer_recycling")]
     buffer_recycling_bars.reset_index(inplace=True)
-    executor_recycling_bars = filtered_data.loc[(
-        filtered_data['scenario name'] ==
-        "hydro_cppuddle_with_executor_recycling")]
-    executor_recycling_bars.reset_index(inplace=True)
+    if len(baseline_bars['median time-per-timestep']) == 0:
+        baseline_bars = filtered_data.loc[(
+            filtered_data['scenario name'] ==
+            "hydro_cppuddle_with_executor_recycling")]
+        baseline_bars.reset_index(inplace=True)
     complete_recycling_bars = filtered_data.loc[(
         filtered_data['scenario name'] ==
         "hydro_cppuddle_with_buffer_executor_recycling")]
@@ -140,6 +147,7 @@ def plot_fractions_bars(raw_data):
 
     baseline_bars.reset_index(inplace=True)
     complete_recycling_bars.reset_index(inplace=True)
+
     baseline_bars['overheads'] = baseline_bars['median time-per-timestep'] - complete_recycling_bars['median time-per-timestep']
     baseline_bars['aggregation'] = complete_recycling_bars['median time-per-timestep'] - with_async_bars['median time-per-timestep']
     baseline_bars['async'] = with_async_bars['median time-per-timestep']
@@ -147,8 +155,8 @@ def plot_fractions_bars(raw_data):
 
     plt.figure(figsize=(10,4))
     ax = plt.gca()
-    left = np.zeros(len(baseline_bars))
-    br1 = np.arange(len(baseline_bars))
+    left = np.zeros(len(complete_recycling_bars))
+    br1 = np.arange(len(complete_recycling_bars))
     bar0 = ax.barh(br1, baseline_bars['median time-per-timestep'],
            color='black', edgecolor='black', left=left,
            label='basic_runtime')
@@ -167,15 +175,21 @@ def plot_fractions_bars(raw_data):
     ax.bar_label(bar0, padding=3, rotation='horizontal', fmt='Overall:\n%.0fms')
     ax.bar_label(bar1, label_type='center', rotation='vertical', fmt='%.0fms')
     ax.bar_label(bar2, label_type='center', fmt='Aggregation/\nInterleaving\n%.0fms')
-    ax.bar_label(bar3, label_type='center', fmt='Overhead:\n%.0fms')
+    if amd_node:
+        ax.bar_label(bar3, label_type='center', fmt='Allocation Overhead:\n%.0fms')
+    else:
+        ax.bar_label(bar3, label_type='center', fmt='Overhead:\n%.0fms')
         
     labels = baseline_bars['cores'].unique()
     ax.set_yticks([r for r in range(len(labels))],
         labels, rotation='horizontal')
-    ax.set_xlim([0, 3300])
+    ax.set_xlim([0, 3400])
     ax.set_ylabel("Number HPX worker threads")
     ax.set_xlabel("Median time-per-timestep in ms")
-    ax.set_title("Costs of Overhead and Starvation\n(Used Scenario: Octo-Tiger Blast Benchmark, 512 Sub-Grids) \n(Used Hardware: Intel Icelake CPU / NVIDIA A100 GPU)")
+    if amd_node:
+        ax.set_title("Costs of Overhead and Starvation\n(Used Scenario: Octo-Tiger Blast Benchmark, 512 Sub-Grids) \n(Used Hardware: AMD Epyc2 CPU / AMD MI100 GPU)")
+    else:
+        ax.set_title("Costs of Overhead and Starvation\n(Used Scenario: Octo-Tiger Blast Benchmark, 512 Sub-Grids) \n(Used Hardware: Intel Icelake CPU / NVIDIA A100 GPU)")
     plt.savefig("cppuddle_fractions.pdf", format="pdf", bbox_inches="tight")
     #plt.show()
 
@@ -186,6 +200,9 @@ if __name__ == "__main__":
     parser.add_argument('--filename', dest='filename',
                         action='store', required=True,
                         help='Filename of the runtime data')
+    parser.add_argument('--amd_node', dest='amd_node',
+                        action='store', required=True,
+                        help='Is it the MI100 node?')
     args = parser.parse_args()
     print(args.filename)
 
@@ -219,6 +236,7 @@ if __name__ == "__main__":
         on_bad_lines='warn')
     # squelch matplotlib warnings...
     warnings.filterwarnings("ignore")
+    raw_data = raw_data.loc[raw_data['cores'] <= 64]
     print(raw_data)
-    plot_multibar_cppuddle_features(raw_data)
-    plot_fractions_bars(raw_data)
+    plot_multibar_cppuddle_features(raw_data, args.amd_node)
+    plot_fractions_bars(raw_data, args.amd_node)
